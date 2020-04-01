@@ -1,6 +1,6 @@
 import os
 from random import randint
-
+import sys
 import dash
 import flask
 
@@ -37,7 +37,7 @@ FONT_FAMILY = "Arial"
 # Read in data from csv stored on github
 # csvLoc = 'accidents2015_V.csv'
 csvLoc = 'https://raw.githubusercontent.com/richard-muir/uk-car-accidents/master/accidents2015_V.csv'
-acc = read_csv("Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
+acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
 # Remove observations where speed limit is 0 or 10. There's only three and it adds a lot of
 #  complexity to the bar chart for no material benefit
 acc = acc[~acc['Speed Limit'].isin([0, 10])]
@@ -126,6 +126,7 @@ app.layout = html.Div(
                             min=2010,
                             max=2017,
                             value=2010,
+                            included=False,
                             marks={years: years for years in range(2010, 2018)},
                             className="dcc_control",
                             updatemode='mouseup'
@@ -248,28 +249,32 @@ app.layout = html.Div(
                         html.Div(
                             [
                                 html.Div(
-                                    [html.H6(id="well_text"), html.P("No. of Crashes")],
+                                    [html.Div(html.P("No. of Crashes")),html.Div(html.H4(id="well_text"),style={'position':'absolute','bottom':'5px'})],
                                     id="wells",
+                                    style={'position':'relative'},
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.H6(id="gasText"), html.P("No. of Casualties")],
+                                    [html.Div(html.P("No. of Casualties")),html.Div(html.H4(id="gasText"),style={'position':'absolute','bottom':'5px'}) ],
                                     id="gas",
+                                    style={'position':'relative'},
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.H6(id="oilText"), html.P("Most Crashes on")],
-                                    id="oil",
+                                    [html.Div(html.P("Most Crashes on")),html.Div(html.H6(id="oilText")) ],
+                                    id="oil",                
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.H6(id="waterText"), html.P("Vulnerable Age")],
+                                    [html.Div( html.P("Vulnerable Age")),html.Div(html.H4(id="waterText"),style={'position':'absolute','bottom':'5px'})],
                                     id="water",
+                                    style={'position':'relative'},
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.H6(id="waterText2"), html.P("Crash Severity")],
+                                    [html.Div(html.P("Crash Severity")),html.Div(html.H4(id="waterText2"),style={'position':'absolute','bottom':'5px'}) ],
                                     id="water2",
+                                    style={'position':'relative'},
                                     className="mini_container",
                                 ),
                             ],
@@ -291,7 +296,31 @@ app.layout = html.Div(
         html.Div(
             [
                 html.Div(
-                    [dcc.Graph(id="pie_graph")],
+                    [dcc.Graph(id="pie_graph",
+                    figure={
+                        'data': [
+                            dict(
+                                x=acc[acc['Accident Severity'] == i]['Accident Month'],
+                                y=acc[acc['Accident Severity'] == i]['Speed Limit'],
+                                text=acc[acc['Accident Severity'] == i]['Accident Severity'],
+                                mode='markers',
+                                opacity=0.7,
+                                marker={
+                                    'size': 15,
+                                    'line': {'width': 0.5, 'color': 'white'}
+                                },
+                                name=i
+                            ) for i in acc['Accident Severity'].unique()
+                        ],
+                        'layout': dict(
+                            xaxis={'title': 'Month'},
+                            yaxis={'title': 'Speed Limit'},
+                            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
+                            legend={'x': 0, 'y': 1},
+                            hovermode='closest'
+                            )
+                        }                              
+                               )],
                     className="pretty_container seven columns",
                 ),
                 html.Div(
@@ -452,6 +481,11 @@ def updateHeatmap(severity, weekdays, time, year):
     #  colour for missing values. I set the maximum to the penultimate maximum value,
     #  then spread out the other. Plotly colourscales here: https://github.com/plotly/plotly.py/blob/master/plotly/colors.py
 
+    Electric = [
+        [0, 'rgb(0,0,0)'], [0.25, 'rgb(30,0,100)'],
+        [0.55, 'rgb(120,0,100)'], [0.8, 'rgb(160,90,0)'],
+        [1, 'rgb(230,200,0)']
+    ]
 
     # Heatmap trace
     traces = [{
@@ -466,9 +500,21 @@ def updateHeatmap(severity, weekdays, time, year):
 
     fig = {'data': traces,
            'layout': {
+               # 'paper_bgcolor': '#F9F9F9',
+               # 'font': {
+               #     'color': '#1a1919'
+               # },
+               # 'height': 300,
+               # 'width': 100,
                'autosize': True,
                'automargin': True,
                'title': 'Accidents by time and day',
+               # 'margin': {
+               #     'b': 0,
+               #     'l': 0,
+               #     't': 0,
+               #     'r': 0,
+               # },
                'xaxis': {
                    'ticktext': hours,  # for the tickvals and ticktext with one for each hour
                    'tickvals': hours,
@@ -709,14 +755,15 @@ def update_text(year,severity, weekdays, time):
                          (acc['Hour'].isin(hours)) &
                          (acc['Accident Year'].isin([year]))
                          ]).reset_index()
+    acc2['cross_street'] = acc2['Location'].str.split(' J/W ',expand=True)[0]
     casualties = acc2["No. of Casualties in Acc."].sum(axis=0)
-    most_crashes_on = acc2.groupby("Location").size().reset_index(name='counts')
+    most_crashes_on = acc2.groupby("cross_street").size().reset_index(name='counts')
     most_crashes_on_srt = most_crashes_on.sort_values(by='counts', ascending=False)
     most_crashes_on_srt_2 = most_crashes_on_srt.head(1)
     crash_sev = acc2.groupby("Accident Severity").size().reset_index(name='counts')
     crash_sev_srt = crash_sev.sort_values(by='counts', ascending=False)
     crash_sev_srt_2 = crash_sev_srt.head(1)
-    return f'{acc2.count()[0]:,}', f'{int(casualties):,}', most_crashes_on_srt_2["Location"],crash_sev_srt_2["Accident Severity"]
+    return f'{acc2.count()[0]:,}', f'{int(casualties):,}', most_crashes_on_srt_2["cross_street"],crash_sev_srt_2["Accident Severity"]
 
 
 # Run the Dash app

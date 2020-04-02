@@ -38,6 +38,9 @@ FONT_FAMILY = "Arial"
 # csvLoc = 'accidents2015_V.csv'
 csvLoc = 'https://raw.githubusercontent.com/richard-muir/uk-car-accidents/master/accidents2015_V.csv'
 acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
+casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
+
 # Remove observations where speed limit is 0 or 10. There's only three and it adds a lot of
 #  complexity to the bar chart for no material benefit
 acc = acc[~acc['Speed Limit'].isin([0, 10])]
@@ -261,18 +264,18 @@ app.layout = html.Div(
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.Div(html.P("Most Crashes on")),html.Div(html.H6(id="oilText")) ],
+                                    [html.Div(html.P("Most Crashes on")),html.Div(html.H5(id="oilText")) ],
                                     id="oil",                
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.Div( html.P("Vulnerable Age")),html.Div(html.H4(id="waterText"),style={'position':'absolute','bottom':'5px'})],
+                                    [html.Div( html.P("Vulnerable Age Group")),html.Div(html.H4(id="waterText"),style={'position':'absolute','bottom':'5px'})],
                                     id="water",
                                     style={'position':'relative'},
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.Div(html.P("Crash Severity")),html.Div(html.H4(id="waterText2"),style={'position':'absolute','bottom':'5px'}) ],
+                                    [html.Div(html.P("Prevalent Casualty Class")),html.Div(html.H5(id="waterText2"),style={'position':'absolute','bottom':'5px'}) ],
                                     id="water2",
                                     style={'position':'relative'},
                                     className="mini_container",
@@ -296,30 +299,7 @@ app.layout = html.Div(
         html.Div(
             [
                 html.Div(
-                    [dcc.Graph(id="pie_graph",
-                    figure={
-                        'data': [
-                            dict(
-                                x=acc[acc['Accident Severity'] == i]['Accident Month'],
-                                y=acc[acc['Accident Severity'] == i]['Speed Limit'],
-                                text=acc[acc['Accident Severity'] == i]['Accident Severity'],
-                                mode='markers',
-                                opacity=0.7,
-                                marker={
-                                    'size': 15,
-                                    'line': {'width': 0.5, 'color': 'white'}
-                                },
-                                name=i
-                            ) for i in acc['Accident Severity'].unique()
-                        ],
-                        'layout': dict(
-                            xaxis={'title': 'Month'},
-                            yaxis={'title': 'Speed Limit'},
-                            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
-                            legend={'x': 0, 'y': 1},
-                            hovermode='closest'
-                            )
-                        }                              
+                    [dcc.Graph(id="pie_graph"                        
                                )],
                     className="pretty_container seven columns",
                 ),
@@ -350,7 +330,52 @@ app.layout = html.Div(
 
 
 ## APP INTERACTIVITY THROUGH CALLBACK FUNCTIONS TO UPDATE THE CHARTS ##
+#Callback for scatter plot "pie_graph"
+@app.callback(Output("pie_graph", "figure"),
+              [Input('year_slider', 'value'),
+               Input('severityChecklist', 'value'),
+               Input('dayChecklist', 'value'),
+               Input('hourSlider', 'value'),
+               ])
+def make_scatter(year, severity, weekdays, time):
+    hours = [i for i in range(time[0], time[1] + 1)]
 
+    # Create a copy of the dataframe by filtering according to the values passed in.
+    # Important to create a copy rather than affect the global object.
+    cas = DataFrame(casualty[[
+        'Accident Day', 'Casualty Age','Casualty Class']][
+                         (casualty['Casualty Severity'].isin(severity)) &
+                         (casualty['Day'].isin(weekdays)) &
+                         (casualty['Hour'].isin(hours)) &
+                         (casualty['Accident Year'].isin([year]))
+                         ]).reset_index()
+    # chosen = [point["customdata"] for point in main_graph_hover["points"]]
+    # index, gas, oil, water = produce_individual(chosen[0])
+
+    figure={
+                        'data': [
+                            dict(
+                                x=cas[cas['Casualty Class'] == i]['Casualty Age'],
+                                y=cas[cas['Casualty Class'] == i]['Accident Day'],
+                                text=cas[cas['Casualty Class'] == i]['Casualty Class'],
+                                mode='markers',
+                                opacity=0.7,
+                                marker={
+                                    'size': 15,
+                                    'line': {'width': 0.5, 'color': 'white'}
+                                },
+                                name=i
+                            ) for i in cas['Casualty Class'].unique()
+                        ],
+                        'layout': dict(
+                            xaxis={'title': 'Casualty Age'},
+                            yaxis={'title': 'Day'},
+                            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
+                            legend={'x': 0, 'y': 1},
+                            hovermode='closest'
+                            )
+                        } 
+    return figure   
 # Callback function passes the current value of all three filters into the update functions.
 # This on updates the bar.
 @app.callback(
@@ -735,6 +760,7 @@ def make_individual_figure(year, severity, weekdays, time):
         Output("well_text", "children"),
         Output("gasText", "children"),
         Output("oilText", "children"),
+        Output("waterText", "children"),
         Output("waterText2", "children"),
     ],
     [Input('year_slider', 'value'),
@@ -755,15 +781,27 @@ def update_text(year,severity, weekdays, time):
                          (acc['Hour'].isin(hours)) &
                          (acc['Accident Year'].isin([year]))
                          ]).reset_index()
+    cas = DataFrame(casualty[[
+        'Casualty Severity', 'Casualty Age (Banded)','Casualty Class']][
+                         (casualty['Casualty Severity'].isin(severity)) &
+                         (casualty['Day'].isin(weekdays)) &
+                         (casualty['Hour'].isin(hours)) &
+                         (casualty['Accident Year'].isin([year]))
+                         ]).reset_index()
+    
+    vul_age_grp = cas.groupby("Casualty Age (Banded)").size().reset_index(name='counts')
+    vul_age_grp_1 = vul_age_grp.sort_values(by='counts', ascending=False).head(1)
+    
+    cc = cas.groupby("Casualty Class").size().reset_index(name='counts')
+    ccc = cc.sort_values(by='counts', ascending=False).head(1)
+
     acc2['cross_street'] = acc2['Location'].str.split(' J/W ',expand=True)[0]
     casualties = acc2["No. of Casualties in Acc."].sum(axis=0)
     most_crashes_on = acc2.groupby("cross_street").size().reset_index(name='counts')
     most_crashes_on_srt = most_crashes_on.sort_values(by='counts', ascending=False)
     most_crashes_on_srt_2 = most_crashes_on_srt.head(1)
-    crash_sev = acc2.groupby("Accident Severity").size().reset_index(name='counts')
-    crash_sev_srt = crash_sev.sort_values(by='counts', ascending=False)
-    crash_sev_srt_2 = crash_sev_srt.head(1)
-    return f'{acc2.count()[0]:,}', f'{int(casualties):,}', most_crashes_on_srt_2["cross_street"],crash_sev_srt_2["Accident Severity"]
+
+    return f'{acc2.count()[0]:,}', f'{int(casualties):,}', most_crashes_on_srt_2["cross_street"],vul_age_grp_1['Casualty Age (Banded)'],ccc["Casualty Class"]
 
 
 # Run the Dash app

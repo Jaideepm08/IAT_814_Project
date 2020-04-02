@@ -41,8 +41,8 @@ FONT_FAMILY = "Arial"
 # Read in data from csv stored on github
 # csvLoc = 'accidents2015_V.csv'
 csvLoc = 'https://raw.githubusercontent.com/richard-muir/uk-car-accidents/master/accidents2015_V.csv'
-acc = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
+casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
 
 # Remove observations where speed limit is 0 or 10. There's only three and it adds a lot of
@@ -158,13 +158,10 @@ app.layout = html.Div(
                                 {'label': sev, 'value': sev} for sev in acc['Accident Severity'].unique()
                             ],
                             value=[sev for sev in acc['Accident Severity'].unique()],
-                            labelStyle={
-                                'display': 'inline-block'
-                                # 'paddingRight': 10,
-                                # 'paddingLeft': 10,
-                                # 'paddingBottom': 5,
-                            },
-                            className="dcc_control",
+                            inputStyle={
+                                        'background': '#333'
+                                        },
+                            className="check",
                             id="severityChecklist",
 
                         ),
@@ -191,27 +188,16 @@ app.layout = html.Div(
                                    'November', 'December'],
                             className="dcc_control",
                         ),
-                        # dcc.Dropdown(
-                        #     id="well_statuses",
-                        #     options=well_status_options,
-                        #     multi=True,
-                        #     value=list(WELL_STATUSES.keys()),
-                        #     className="dcc_control",
-                        # ),
+
                         html.Br(),
                         html.P("Filter by day of Week:", className="control_label", style={'font-weight': 'bold'}),
-                        dcc.Checklist(  # Checklist for the dats of week, sorted using the sorting dict created earlier
+                        dcc.Dropdown(  # Checklist for the dats of week, sorted using the sorting dict created earlier
                             options=[
                                 {'label': day[:3], 'value': day} for day in
                                 sorted(acc['Day'].unique(), key=lambda k: DAYSORT[k])
                             ],
+                            multi=True,
                             value=[day for day in acc['Day'].unique()],
-                            labelStyle={  # Different padding for the checklist elements
-                                'display': 'inline-block'
-                                # 'paddingRight': 10,
-                                # 'paddingLeft': 10,
-                                # 'paddingBottom': 5,
-                            },
                             className="dcc_control",
                             id="dayChecklist",
                         ),
@@ -362,7 +348,7 @@ def make_scatter(year, severity, weekdays, time, months):
                         'data': [
                             dict(
                                 x=cas[cas['Casualty Class'] == i]['Casualty Age'],
-                                y=cas[cas['Casualty Class'] == i]['Accident Day'],
+                                y=cas[cas['Casualty Class'] == i].index.to_series(),
                                 text=cas[cas['Casualty Class'] == i]['Casualty Class'],
                                 mode='markers',
                                 opacity=0.7,
@@ -374,11 +360,15 @@ def make_scatter(year, severity, weekdays, time, months):
                             ) for i in cas['Casualty Class'].unique()
                         ],
                         'layout': dict(
+                            autosize= True,
+                            automargin= True,
+                            title='Accidents with respect to Age and Casualty class',
                             xaxis={'title': 'Casualty Age'},
-                            yaxis={'title': 'Day'},
-                            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
-                            legend={'x': 0, 'y': 1},
-                            hovermode='closest'
+                            yaxis={'title': 'Number of Crashes'},
+                            margin={'l': 40, 'b': 40, 't': 80, 'r': 10},
+                            legend={'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
+                            hovermode='closest',
+                            transition= {'duration': 500}
                             )
                         } 
     return figure   
@@ -718,28 +708,28 @@ def make_individual_figure(year, severity, weekdays, time, months):
         dict(
             type="scatter",
             mode="lines+markers",
-            name="Gas Produced (mcf)",
+            name="Slight",
             x=indexed,
             y=gas['counts'],
-            line=dict(shape="spline", smoothing=2, width=1, color="#fac1b7"),
+            line=dict(shape="spline", smoothing=2, width=1, color="#FFE50C"),
             marker=dict(symbol="diamond-open"),
         ),
         dict(
             type="scatter",
             mode="lines+markers",
-            name="Oil Produced (bbl)",
+            name="Serious",
             x=indexed,
             y=oil['counts'],
-            line=dict(shape="spline", smoothing=2, width=1, color="#a9bb95"),
+            line=dict(shape="spline", smoothing=2, width=1, color="#F78E09"),
             marker=dict(symbol="diamond-open"),
         ),
         dict(
             type="scatter",
             mode="lines+markers",
-            name="Water Produced (bbl)",
+            name="Fatal",
             x=indexed,
             y=water['counts'],
-            line=dict(shape="spline", smoothing=2, width=1, color="#92d8d8"),
+            line=dict(shape="spline", smoothing=2, width=1, color="#DA240B"),
             marker=dict(symbol="diamond-open"),
         ),
     ]

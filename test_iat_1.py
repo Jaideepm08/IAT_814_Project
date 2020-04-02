@@ -3,6 +3,7 @@ from random import randint
 import sys
 import dash
 import flask
+import pandas as pd
 
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
@@ -29,6 +30,9 @@ SERIOUS_FRAC = 0.5
 # This dict allows me to sort the weekdays in the right order
 DAYSORT = dict(zip(['Friday', 'Monday', 'Saturday', 'Sunday', 'Thursday', 'Tuesday', 'Wednesday'],
                    [4, 0, 5, 6, 3, 1, 2]))
+# This dict allows me to sort the weekdays in the right order
+YEARSORT = dict(zip(['January', 'February', 'March', 'April', 'May', 'June', 'July','August','September','October', 'November','December'],
+                   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ,10, 11, 12]))
 
 # Set the global font family
 FONT_FAMILY = "Arial"
@@ -336,8 +340,9 @@ app.layout = html.Div(
                Input('severityChecklist', 'value'),
                Input('dayChecklist', 'value'),
                Input('hourSlider', 'value'),
+               Input('well_statuses','value'),
                ])
-def make_scatter(year, severity, weekdays, time):
+def make_scatter(year, severity, weekdays, time, months):
     hours = [i for i in range(time[0], time[1] + 1)]
 
     # Create a copy of the dataframe by filtering according to the values passed in.
@@ -347,7 +352,8 @@ def make_scatter(year, severity, weekdays, time):
                          (casualty['Casualty Severity'].isin(severity)) &
                          (casualty['Day'].isin(weekdays)) &
                          (casualty['Hour'].isin(hours)) &
-                         (casualty['Accident Year'].isin([year]))
+                         (casualty['Accident Year'].isin([year])) &
+                         (casualty['Accident Month'].isin(months))
                          ]).reset_index()
     # chosen = [point["customdata"] for point in main_graph_hover["points"]]
     # index, gas, oil, water = produce_individual(chosen[0])
@@ -384,9 +390,10 @@ def make_scatter(year, severity, weekdays, time):
      Input(component_id='dayChecklist', component_property='value'),
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
+     Input('well_statuses','value'),
      ]
 )
-def updateBarChart(severity, weekdays, time, year):
+def updateBarChart(severity, weekdays, time, year, months):
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
     hours = [i for i in range(time[0], time[1] + 1)]
 
@@ -397,7 +404,8 @@ def updateBarChart(severity, weekdays, time, year):
                          (acc['Accident Severity'].isin(severity)) &
                          (acc['Day'].isin(weekdays)) &
                          (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year]))
+                         (acc['Accident Year'].isin([year])) &
+                         (acc['Accident Month'].isin(months))
                          ].groupby(['Accident Severity', 'Speed Limit']).sum()).reset_index()
 
     # Create the field for the hovertext. Doing this after grouping, rather than
@@ -468,9 +476,10 @@ def updateBarChart(severity, weekdays, time, year):
      Input(component_id='dayChecklist', component_property='value'),
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
+     Input('well_statuses','value'),
      ]
 )
-def updateHeatmap(severity, weekdays, time, year):
+def updateHeatmap(severity, weekdays, time, year, months):
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
     hours = [i for i in range(time[0], time[1] + 1)]
     # Take a copy of the dataframe, filtering it and grouping
@@ -479,7 +488,8 @@ def updateHeatmap(severity, weekdays, time, year):
                          (acc['Accident Severity'].isin(severity)) &
                          (acc['Day'].isin(weekdays)) &
                          (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year]))
+                         (acc['Accident Year'].isin([year])) &
+                         (acc['Accident Month'].isin(months))
                          ].groupby(['Day', 'Hour']).sum()).reset_index()
 
     # Apply text after grouping
@@ -558,9 +568,10 @@ def updateHeatmap(severity, weekdays, time, year):
      Input(component_id='dayChecklist', component_property='value'),
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
+     Input('well_statuses','value'),
      ]
 )
-def updateMapBox(severity, weekdays, time, year):
+def updateMapBox(severity, weekdays, time, year, months):
     # List of hours again
     hours = [i for i in range(time[0], time[1] + 1)]
     # Filter the dataframe
@@ -568,7 +579,8 @@ def updateMapBox(severity, weekdays, time, year):
         (acc['Accident Severity'].isin(severity)) &
         (acc['Day'].isin(weekdays)) &
         (acc['Hour'].isin(hours)) &
-        (acc['Accident Year'].isin([year]))
+        (acc['Accident Year'].isin([year])) &
+        (acc['Accident Month'].isin(months))
         ]
 
     # Once trace for each severity value
@@ -658,24 +670,36 @@ def updateMapBox(severity, weekdays, time, year):
                Input('severityChecklist', 'value'),
                Input('dayChecklist', 'value'),
                Input('hourSlider', 'value'),
+               Input('well_statuses','value'),
                ])
-def make_individual_figure(year, severity, weekdays, time):
+def make_individual_figure(year, severity, weekdays, time, months):
     hours = [i for i in range(time[0], time[1] + 1)]
-
     # Create a copy of the dataframe by filtering according to the values passed in.
     # Important to create a copy rather than affect the global object.
     acc2 = DataFrame(acc[[
-        'Accident Severity', 'Location', 'No. of Casualties in Acc.']][
+        'Accident Severity', 'Location', 'No. of Casualties in Acc.','Accident Month']][
                          (acc['Accident Severity'].isin(severity)) &
                          (acc['Day'].isin(weekdays)) &
                          (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year]))
+                         (acc['Accident Year'].isin([year])) &
+                         (acc['Accident Month'].isin(months))
                          ]).reset_index()
     # chosen = [point["customdata"] for point in main_graph_hover["points"]]
     # index, gas, oil, water = produce_individual(chosen[0])
-    index = ["Jan", "Feb", "Mar", "Apr", "May"]
-    gas = [19, 50, 23, 45, 10]
-    oil = [38, 99, 38, 18, 42]
+    grouped = acc2.groupby(["Accident Month","Accident Severity"]).size().reset_index(name='counts')
+    indexed =  sorted(grouped['Accident Month'].unique(), key=lambda k: YEARSORT[k])
+    #print("months are", index)
+    gas = grouped[['counts','Accident Month']][(grouped['Accident Severity'] == 'Slight') & (grouped['Accident Month'].isin(indexed))]
+    gas['Accident Month'] = pd.Categorical(gas['Accident Month'], categories=indexed, ordered=True)
+    gas = gas.sort_values(by='Accident Month')
+    #print("gas",gas.head())
+    oil = grouped[['counts','Accident Month']][(grouped['Accident Severity'] == 'Serious') & (grouped['Accident Month'].isin(indexed))]
+    oil['Accident Month'] = pd.Categorical(oil['Accident Month'], categories=indexed, ordered=True)
+    oil = oil.sort_values(by='Accident Month')
+    water = grouped[['counts','Accident Month']][(grouped['Accident Severity'] == 'Fatal') & (grouped['Accident Month'].isin(indexed))]
+    water['Accident Month'] = pd.Categorical(water['Accident Month'], categories=indexed, ordered=True)
+    water = water.sort_values(by='Accident Month')
+
 
     # if index is None:
     #     annotation = dict(
@@ -695,8 +719,8 @@ def make_individual_figure(year, severity, weekdays, time):
             type="scatter",
             mode="lines+markers",
             name="Gas Produced (mcf)",
-            x=index,
-            y=gas,
+            x=indexed,
+            y=gas['counts'],
             line=dict(shape="spline", smoothing=2, width=1, color="#fac1b7"),
             marker=dict(symbol="diamond-open"),
         ),
@@ -704,22 +728,21 @@ def make_individual_figure(year, severity, weekdays, time):
             type="scatter",
             mode="lines+markers",
             name="Oil Produced (bbl)",
-            x=index,
-            y=oil,
+            x=indexed,
+            y=oil['counts'],
             line=dict(shape="spline", smoothing=2, width=1, color="#a9bb95"),
             marker=dict(symbol="diamond-open"),
         ),
-        # dict(
-        #     type="scatter",
-        #     mode="lines+markers",
-        #     name="Water Produced (bbl)",
-        #     x=index,
-        #     y=water,
-        #     line=dict(shape="spline", smoothing=2, width=1, color="#92d8d8"),
-        #     marker=dict(symbol="diamond-open"),
-        # ),
+        dict(
+            type="scatter",
+            mode="lines+markers",
+            name="Water Produced (bbl)",
+            x=indexed,
+            y=water['counts'],
+            line=dict(shape="spline", smoothing=2, width=1, color="#92d8d8"),
+            marker=dict(symbol="diamond-open"),
+        ),
     ]
-
     layout = {
         # 'paper_bgcolor': '#F9F9F9',
         # 'plot_bgcolor': '#F9F9F9',
@@ -743,14 +766,13 @@ def make_individual_figure(year, severity, weekdays, time):
             'yanchor': 'bottom',
         },
         'xaxis': {
-            'tickvals': index,  # Force the tickvals & ticktext just in case
-            'ticktext': index,
+            'tickvals': indexed,  # Force the tickvals & ticktext just in case
+            'ticktext': indexed,
             'tickmode': 'array'
         },
         'transition': {
             'duration': 1000}
     }
-
     figure = dict(data=data, layout=layout)
     return figure
 
@@ -767,9 +789,10 @@ def make_individual_figure(year, severity, weekdays, time):
      Input('severityChecklist', 'value'),
      Input('dayChecklist', 'value'),
      Input('hourSlider', 'value'),
+     Input('well_statuses','value'),
      ]
 )
-def update_text(year,severity, weekdays, time):
+def update_text(year,severity, weekdays, time, months):
     hours = [i for i in range(time[0], time[1] + 1)]
 
     # Create a copy of the dataframe by filtering according to the values passed in.
@@ -779,14 +802,16 @@ def update_text(year,severity, weekdays, time):
                          (acc['Accident Severity'].isin(severity)) &
                          (acc['Day'].isin(weekdays)) &
                          (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year]))
+                         (acc['Accident Year'].isin([year])) &
+                         (acc['Accident Month'].isin(months))
                          ]).reset_index()
     cas = DataFrame(casualty[[
         'Casualty Severity', 'Casualty Age (Banded)','Casualty Class']][
                          (casualty['Casualty Severity'].isin(severity)) &
                          (casualty['Day'].isin(weekdays)) &
                          (casualty['Hour'].isin(hours)) &
-                         (casualty['Accident Year'].isin([year]))
+                         (casualty['Accident Year'].isin([year])) &
+                         (casualty['Accident Month'].isin(months))
                          ]).reset_index()
     
     vul_age_grp = cas.groupby("Casualty Age (Banded)").size().reset_index(name='counts')

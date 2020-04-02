@@ -41,8 +41,8 @@ FONT_FAMILY = "Arial"
 # Read in data from csv stored on github
 # csvLoc = 'accidents2015_V.csv'
 csvLoc = 'https://raw.githubusercontent.com/richard-muir/uk-car-accidents/master/accidents2015_V.csv'
-acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+acc = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
+casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
 
 # Remove observations where speed limit is 0 or 10. There's only three and it adds a lot of

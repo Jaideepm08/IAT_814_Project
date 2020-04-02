@@ -66,8 +66,8 @@ app.css.append_css({
 ## SETTING UP THE APP LAYOUT ##
 app.title = 'My Title'
 # Main layout container
-app.layout = html.Div(
-    [
+app.layout = html.Div([
+        
         dcc.Store(id="aggregate_data"),
         # empty Div to trigger javascript file for graph resizing
         html.Div(id="output-clientside"),
@@ -119,6 +119,10 @@ app.layout = html.Div(
             className="row flex-display",
             style={"margin-bottom": "10px"},
         ),
+                    
+                    
+        dcc.Tabs([
+        dcc.Tab(label='General', children=[          
         html.Div(
             [
                 html.Div(
@@ -159,7 +163,7 @@ app.layout = html.Div(
                             ],
                             value=[sev for sev in acc['Accident Severity'].unique()],
                             inputStyle={
-                                        'background': '#333'
+                                        'background': 'red'
                                         },
                             className="check",
                             id="severityChecklist",
@@ -285,7 +289,11 @@ app.layout = html.Div(
                 ),
             ],
             className="row flex-display",
-        ),
+        )]),
+       dcc.Tab(label='Weather', children=[]),
+       dcc.Tab(label='Road Conditions', children=[]),
+       dcc.Tab(label='Vehicle Details', children=[]),
+    ]),
         html.Div(
             [
                 html.Div(

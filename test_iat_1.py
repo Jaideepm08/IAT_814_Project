@@ -67,7 +67,7 @@ app.css.append_css({
 app.title = 'My Title'
 # Main layout container
 app.layout = html.Div([
-        
+
         dcc.Store(id="aggregate_data"),
         # empty Div to trigger javascript file for graph resizing
         html.Div(id="output-clientside"),
@@ -119,10 +119,10 @@ app.layout = html.Div([
             className="row flex-display",
             style={"margin-bottom": "10px"},
         ),
-                    
-                    
+
+
         dcc.Tabs([
-        dcc.Tab(label='General', children=[          
+        dcc.Tab(label='General', children=[
         html.Div(
             [
                 html.Div(
@@ -259,7 +259,7 @@ app.layout = html.Div([
                                 ),
                                 html.Div(
                                     [html.Div(html.P("Most Crashes on")),html.Div(html.H5(id="oilText")) ],
-                                    id="oil",                
+                                    id="oil",
                                     className="mini_container",
                                 ),
                                 html.Div(
@@ -297,7 +297,7 @@ app.layout = html.Div([
         html.Div(
             [
                 html.Div(
-                    [dcc.Graph(id="pie_graph"                        
+                    [dcc.Graph(id="pie_graph"
                                )],
                     className="pretty_container seven columns",
                 ),
@@ -351,35 +351,104 @@ def make_scatter(year, severity, weekdays, time, months):
                          ]).reset_index()
     # chosen = [point["customdata"] for point in main_graph_hover["points"]]
     # index, gas, oil, water = produce_individual(chosen[0])
+    sct_grp = cas.groupby(["Casualty Age", "Casualty Class"]).size().reset_index(name='counts')
+    indexed = sorted(sct_grp['Casualty Age'].unique(), reverse=False)
+    print("sct",sct_grp)
+    # print("months are", index)
+    # gas = grouped[['counts', 'Accident Month']][
+    #     (grouped['Accident Severity'] == 'Slight') & (grouped['Accident Month'].isin(indexed))]
+    # gas['Accident Month'] = pd.Categorical(gas['Accident Month'], categories=indexed, ordered=True)
+    # gas = gas.sort_values(by='Accident Month')
+    # # print("gas",gas.head())
+    # oil = grouped[['counts', 'Accident Month']][
+    #     (grouped['Accident Severity'] == 'Serious') & (grouped['Accident Month'].isin(indexed))]
+    # oil['Accident Month'] = pd.Categorical(oil['Accident Month'], categories=indexed, ordered=True)
+    # oil = oil.sort_values(by='Accident Month')
+    # water = grouped[['counts', 'Accident Month']][
+    #     (grouped['Accident Severity'] == 'Fatal') & (grouped['Accident Month'].isin(indexed))]
+    # water['Accident Month'] = pd.Categorical(water['Accident Month'], categories=indexed, ordered=True)
+    # water = water.sort_values(by='Accident Month')
 
-    figure={
-                        'data': [
-                            dict(
-                                x=cas[cas['Casualty Class'] == i]['Casualty Age'],
-                                y=cas[cas['Casualty Class'] == i].index.to_series(),
-                                text=cas[cas['Casualty Class'] == i]['Casualty Class'],
-                                mode='markers',
-                                opacity=0.7,
-                                marker={
-                                    'size': 15,
-                                    'line': {'width': 0.5, 'color': 'white'}
-                                },
-                                name=i
-                            ) for i in cas['Casualty Class'].unique()
-                        ],
-                        'layout': dict(
-                            autosize= True,
-                            automargin= True,
-                            title='Accidents with respect to Age and Casualty class',
-                            xaxis={'title': 'Casualty Age'},
-                            yaxis={'title': 'Number of Crashes'},
-                            margin={'l': 40, 'b': 40, 't': 80, 'r': 10},
-                            legend={'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
-                            hovermode='closest',
-                            transition= {'duration': 500}
-                            )
-                        } 
-    return figure   
+    figure = {
+        'data': [
+            {
+                'x': indexed,
+                'y': sct_grp['counts'][sct_grp['Casualty Class']=='Driver/Rider'],
+                'text': [sct_grp['Casualty Class'].unique()],
+                #'customdata': ['c.a', 'c.b', 'c.c', 'c.d'],
+                'name': 'Driver/Rider',
+                'mode': 'markers',
+                'marker': {'size': 12}
+            },
+            {
+                'x': indexed,
+                'y': sct_grp['counts'][sct_grp['Casualty Class']=='Passenger'],
+                'text': [sct_grp['Casualty Class'].unique()],
+                #'customdata': ['c.w', 'c.x', 'c.y', 'c.z'],
+                'name': 'Passenger',
+                'mode': 'markers',
+                'marker': {'size': 12}
+            },
+            {
+                'x': indexed,
+                'y': sct_grp['counts'][sct_grp['Casualty Class'] == 'Pedestrian'],
+                'text': [sct_grp['Casualty Class'].unique()],
+                # 'customdata': ['c.w', 'c.x', 'c.y', 'c.z'],
+                'name': 'Pedestrian',
+                'mode': 'markers',
+                'marker': {'size': 12}
+            }
+        ],
+    # figure={
+    #                     'data': [
+    #                         dict({
+    #                             x=indexed,
+    #                             y=sct_grp['counts'][sct_grp['Casualty Class']=='Driver/Rider'],
+    #                             text=[sct_grp['Casualty Class'].unique()],
+    #                             mode='markers',
+    #                             name = 'Driver/Rider',
+    #                             opacity=0.7,
+    #                             marker={
+    #                                 'size': 15,
+    #                                 'line': {'width': 0.5, 'color': 'white'}}
+    #                              },),
+    #                             # {
+    #                             # x=indexed,
+    #                             # y=sct_grp['counts'][sct_grp['Casualty Class']=='Passenger'],
+    #                             # text=[sct_grp['Casualty Class'].unique()],
+    #                             # mode='markers',
+    #                             # name = 'Passenger',
+    #                             # opacity=0.7,
+    #                             # marker={
+    #                             #     'size': 15,
+    #                             #     'line': {'width': 0.5, 'color': 'blue'}}
+    #                             #     },
+    #                             # {
+    #                             # x=indexed,
+    #                             # y=sct_grp['counts'][sct_grp['Casualty Class']=='Pedestrian'],
+    #                             # text=[sct_grp['Casualty Class'].unique()],
+    #                             # mode='markers',
+    #                             # name = 'Pedestrian',
+    #                             # opacity=0.7,
+    #                             # marker={
+    #                             #     'size': 15,
+    #                             #     'line': {'width': 0.5, 'color': 'green'}}
+    #                             #
+    #                             # }
+    #                     ],
+                        'layout': {
+                            'autosize': True,
+                            'automargin':True,
+                            'title':'Accidents with respect to Age and Casualty class',
+                            'xaxis':{'title': 'Casualty Age'},
+                            'yaxis':{'title': 'Number of Crashes'},
+                            'margin':{'l': 40, 'b': 40, 't': 80, 'r': 10},
+                            'legend':{'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
+                            'hovermode':'closest',
+                            'transition': {'duration': 500}
+                                }
+                        }
+    return figure
 # Callback function passes the current value of all three filters into the update functions.
 # This on updates the bar.
 @app.callback(
@@ -811,10 +880,10 @@ def update_text(year,severity, weekdays, time, months):
                          (casualty['Accident Year'].isin([year])) &
                          (casualty['Accident Month'].isin(months))
                          ]).reset_index()
-    
+
     vul_age_grp = cas.groupby("Casualty Age (Banded)").size().reset_index(name='counts')
     vul_age_grp_1 = vul_age_grp.sort_values(by='counts', ascending=False).head(1)
-    
+
     cc = cas.groupby("Casualty Class").size().reset_index(name='counts')
     ccc = cc.sort_values(by='counts', ascending=False).head(1)
 

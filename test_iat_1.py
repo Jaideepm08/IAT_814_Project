@@ -41,8 +41,10 @@ FONT_FAMILY = "Arial"
 # Read in data from csv stored on github
 # csvLoc = 'accidents2015_V.csv'
 csvLoc = 'https://raw.githubusercontent.com/richard-muir/uk-car-accidents/master/accidents2015_V.csv'
+# acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
+# casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df_age_grp.csv", index_col=0).dropna(how='any', axis=0)
 acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+casualty = read_csv("data/casualty_df_age_grp.csv", index_col=0).dropna(how='any', axis=0)
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
 
 # Remove observations where speed limit is 0 or 10. There's only three and it adds a lot of
@@ -460,7 +462,7 @@ def make_scatter(year, severity, weekdays, time, months):
     # Create a copy of the dataframe by filtering according to the values passed in.
     # Important to create a copy rather than affect the global object.
     cas = DataFrame(casualty[[
-        'Accident Day', 'Casualty Age','Casualty Class']][
+                            'Casualty Age','Casualty Class']][
                          (casualty['Casualty Severity'].isin(severity)) &
                          (casualty['Day'].isin(weekdays)) &
                          (casualty['Hour'].isin(hours)) &
@@ -469,9 +471,12 @@ def make_scatter(year, severity, weekdays, time, months):
                          ]).reset_index()
     # chosen = [point["customdata"] for point in main_graph_hover["points"]]
     # index, gas, oil, water = produce_individual(chosen[0])
-    sct_grp = cas.groupby(["Casualty Age", "Casualty Class"]).size().reset_index(name='counts')
-    indexed = sorted(sct_grp['Casualty Age'].unique(), reverse=False)
-    # print("months are", index)
+    sct_grp = cas.groupby(["Casualty Age"]).size().reset_index(name='counts')
+    joined = cas.merge(sct_grp, how ='inner', on='Casualty Age')
+    indexed = sorted(joined['Casualty Age'], reverse=False)
+    #print("months are", joined)
+    joined = joined.sort_values(by='Casualty Age')
+    #print(sct_grp_1)
     # gas = grouped[['counts', 'Accident Month']][
     #     (grouped['Accident Severity'] == 'Slight') & (grouped['Accident Month'].isin(indexed))]
     # gas['Accident Month'] = pd.Categorical(gas['Accident Month'], categories=indexed, ordered=True)
@@ -490,8 +495,8 @@ def make_scatter(year, severity, weekdays, time, months):
         'data': [
             {
                 'x': indexed,
-                'y': sct_grp['counts'][sct_grp['Casualty Class']=='Driver/Rider'],
-                'text': [sct_grp['Casualty Class'].unique()],
+                'y': joined['counts'][joined['Casualty Class']=='Driver/Rider'],
+                'text': [joined['Casualty Class'].unique()],
                 #'customdata': ['c.a', 'c.b', 'c.c', 'c.d'],
                 'name': 'Driver/Rider',
                 'mode': 'markers',
@@ -499,8 +504,8 @@ def make_scatter(year, severity, weekdays, time, months):
             },
             {
                 'x': indexed,
-                'y': sct_grp['counts'][sct_grp['Casualty Class']=='Passenger'],
-                'text': [sct_grp['Casualty Class'].unique()],
+                'y': joined['counts'][joined['Casualty Class']=='Passenger'],
+                'text': [joined['Casualty Class'].unique()],
                 #'customdata': ['c.w', 'c.x', 'c.y', 'c.z'],
                 'name': 'Passenger',
                 'mode': 'markers',
@@ -508,8 +513,8 @@ def make_scatter(year, severity, weekdays, time, months):
             },
             {
                 'x': indexed,
-                'y': sct_grp['counts'][sct_grp['Casualty Class'] == 'Pedestrian'],
-                'text': [sct_grp['Casualty Class'].unique()],
+                'y': joined['counts'][joined['Casualty Class'] == 'Pedestrian'],
+                'text': [joined['Casualty Class'].unique()],
                 # 'customdata': ['c.w', 'c.x', 'c.y', 'c.z'],
                 'name': 'Pedestrian',
                 'mode': 'markers',

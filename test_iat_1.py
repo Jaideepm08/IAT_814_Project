@@ -67,7 +67,6 @@ app.css.append_css({
 app.title = 'My Title'
 # Main layout container
 app.layout = html.Div([
-
         dcc.Store(id="aggregate_data"),
         # empty Div to trigger javascript file for graph resizing
         html.Div(id="output-clientside"),
@@ -289,11 +288,7 @@ app.layout = html.Div([
                 ),
             ],
             className="row flex-display",
-        )]),
-       dcc.Tab(label='Weather', children=[]),
-       dcc.Tab(label='Road Conditions', children=[]),
-       dcc.Tab(label='Vehicle Details', children=[]),
-    ]),
+        ),
         html.Div(
             [
                 html.Div(
@@ -321,6 +316,129 @@ app.layout = html.Div([
             ],
             className="row flex-display",
         ),
+        
+        ]),
+       dcc.Tab(label='Weather', children=[
+               
+               html.Div(
+            [
+                html.Div(
+                    [
+                        html.P(
+                            "Filter by incident date (or select range in histogram):",
+                            className="control_label", style={'font-weight': 'bold'}
+                        ),
+                        html.Br(),
+                        dcc.Slider(
+                            id="year_slider_weather",
+                            min=2010,
+                            max=2017,
+                            value=2010,
+                            included=False,
+                            marks={years: years for years in range(2010, 2018)},
+                            className="dcc_control",
+                            updatemode='mouseup'
+                        ),
+                        html.Br(),
+                        html.P("Filter by Accident Severity:", className="control_label",
+                               style={'font-weight': 'bold'}),
+                        dcc.Checklist(  # Checklist for the three different severity values
+                            options=[
+                                {'label': sev, 'value': sev} for sev in acc['Accident Severity'].unique()
+                            ],
+                            value=[sev for sev in acc['Accident Severity'].unique()],
+                            inputStyle={
+                                        'background': 'red'
+                                        },
+                            className="check",
+                            labelStyle={'display': 'inline-block'},
+                            id="severityChecklist_weather"
+
+                        ),
+                        html.Br(),
+                        html.P("   Filter by Month:", className="control_label", style={'font-weight': 'bold'}),
+                        dcc.Dropdown(
+                            id="well_statuses_weather",
+                            options=[{'label': 'January', 'value': 'January'},
+                                     {'label': 'February', 'value': 'February'},
+                                     {'label': 'March', 'value': 'March'},
+                                     {'label': 'April', 'value': 'April'},
+                                     {'label': 'May', 'value': 'May'},
+                                     {'label': 'June', 'value': 'June'},
+                                     {'label': 'July', 'value': 'July'},
+                                     {'label': 'August', 'value': 'August'},
+                                     {'label': 'September', 'value': 'September'},
+                                     {'label': 'October', 'value': 'October'},
+                                     {'label': 'November', 'value': 'November'},
+                                     {'label': 'December', 'value': 'December'}],
+                            multi=True,
+                            value=['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+                                   'September', 'October',
+                                   'November', 'December'],
+                            className="dcc_control",
+                        )
+                    ],
+                    className="pretty_container four columns",
+                    id="cross-filter-options_weather",
+                ),
+                html.Div(
+                    [
+                        html.Div(
+                            [
+                                html.Div(
+                                    [html.Div(html.P("Weather Condition")),html.Div(html.H5(id="weather_text"),style={'bottom':'5px'})],
+                                    id="weather",
+                                    style={'position':'relative'},
+                                    className="mini_container",
+                                ),
+                                html.Div(
+                                    [html.Div(html.P("Avg Temperature")),html.Div(html.H5(id="temp_text"),style={'bottom':'5px'}) ],
+                                    id="temp",
+                                    style={'position':'relative'},
+                                    className="mini_container",
+                                ),
+                                html.Div(
+                                    [html.Div(html.P("Road Surface")),html.Div(html.H5(id="surf_text"),style={'bottom':'5px'}) ],
+                                    id="surface",
+                                    className="mini_container",
+                                ),
+                                html.Div(
+                                    [html.Div( html.P("Avg Precipitation")),html.Div(html.H5(id="Precip_text"),style={'bottom':'5px'})],
+                                    id="precip",
+                                    style={'position':'relative'},
+                                    className="mini_container",
+                                ),
+                                html.Div(
+                                    [html.Div(html.P("Snowfall Amount")),html.Div(html.H5(id="snow_text"),style={'bottom':'5px'}) ],
+                                    id="snowf",
+                                    style={'position':'relative'},
+                                    className="mini_container",
+                                ),
+                            ],
+                            id="info-container_weather",
+                            className="row container-display",
+                        ),
+                        html.Div(
+                            [dcc.Graph()],
+                            id="weatherGraphContainer",
+                            className="pretty_container",
+                        ),
+                    ],
+                    id="right-column_weather",
+                    className="eight columns",
+                ),
+            ],
+            className="row flex-display",
+        )
+               
+               
+               
+               
+               ]),
+       dcc.Tab(label='Road Conditions', children=[]),
+       dcc.Tab(label='Vehicle Details', children=[]),
+    ]),
+        
     ],
     id="mainContainer",
     style={"display": "flex", "flex-direction": "column"},
@@ -353,7 +471,6 @@ def make_scatter(year, severity, weekdays, time, months):
     # index, gas, oil, water = produce_individual(chosen[0])
     sct_grp = cas.groupby(["Casualty Age", "Casualty Class"]).size().reset_index(name='counts')
     indexed = sorted(sct_grp['Casualty Age'].unique(), reverse=False)
-    print("sct",sct_grp)
     # print("months are", index)
     # gas = grouped[['counts', 'Accident Month']][
     #     (grouped['Accident Severity'] == 'Slight') & (grouped['Accident Month'].isin(indexed))]
@@ -894,6 +1011,46 @@ def update_text(year,severity, weekdays, time, months):
     most_crashes_on_srt_2 = most_crashes_on_srt.head(1)
 
     return f'{acc2.count()[0]:,}', f'{int(casualties):,}', most_crashes_on_srt_2["cross_street"],vul_age_grp_1['Casualty Age (Banded)'],ccc["Casualty Class"]
+
+#Weather tab - KPIs
+@app.callback(
+    [
+        Output("weather_text", "children"),
+        Output("temp_text", "children"),
+        Output("surf_text", "children"),
+        Output("Precip_text", "children"),
+        Output("snow_text", "children"),
+    ],
+    [Input('year_slider_weather', 'value'),
+     Input('severityChecklist_weather', 'value'),
+     Input('well_statuses_weather','value'),
+     ]
+)
+def update_text_weather(year,severity, months):
+
+    # Create a copy of the dataframe by filtering according to the values passed in.
+    # Important to create a copy rather than affect the global object.
+    acc2 = DataFrame(acc[[
+        'Weather', 'Temp', 'Road Surface','Precipitation','Snowfall Amount']][
+                         (acc['Accident Severity'].isin(severity)) &
+                         (acc['Accident Year'].isin([year])) &
+                         (acc['Accident Month'].isin(months))
+                         ]).reset_index()
+    
+    weather_cond = acc2.groupby("Weather").size().reset_index(name='counts')
+    weather_cond1 = weather_cond.sort_values(by='counts', ascending=False).head(1)
+    
+    avg_temp = round(acc2['Temp'].mean(),1)
+    
+    road_surf = acc2.groupby("Road Surface").size().reset_index(name='counts')
+    road_surf1 = road_surf.sort_values(by='counts', ascending=False).head(1)
+    
+    avg_prec = round(acc2['Precipitation'].mean(),1)
+    avg_snow = round(acc2['Snowfall Amount'].mean(),1)
+
+    return weather_cond1['Weather'], '{} C'.format(avg_temp), road_surf1['Road Surface'].str[5:], '{} mm'.format(avg_prec), '{} cm'.format(avg_snow)
+
+
 
 
 # Run the Dash app

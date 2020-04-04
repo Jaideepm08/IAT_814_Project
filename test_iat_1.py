@@ -4,6 +4,8 @@ import sys
 import dash
 import flask
 import pandas as pd
+import plotly.graph_objs as go
+
 
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
@@ -39,10 +41,8 @@ FONT_FAMILY = "Arial"
 
 
 # Read in data from csv stored on github
-# csvLoc = 'accidents2015_V.csv'
-csvLoc = 'https://raw.githubusercontent.com/richard-muir/uk-car-accidents/master/accidents2015_V.csv'
 # acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-# casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df_age_grp.csv", index_col=0).dropna(how='any', axis=0)
+# casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
 casualty = read_csv("data/casualty_df_age_grp.csv", index_col=0).dropna(how='any', axis=0)
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
@@ -454,122 +454,113 @@ app.layout = html.Div([
                Input('severityChecklist', 'value'),
                Input('dayChecklist', 'value'),
                Input('hourSlider', 'value'),
-               Input('well_statuses','value'),
+               Input('individual_graph','selectedData'),
+               Input('heatmap','selectedData'),
                ])
-def make_scatter(year, severity, weekdays, time, months):
-    hours = [i for i in range(time[0], time[1] + 1)]
+def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_selected):
+    # if curve_graph_selected is None:
+    #     months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    # else:
+    #     months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
+    # print(heat_map_selected)
+    # hours = [i for i in range(time[0], time[1] + 1)]
+    #
+    # # Create a copy of the dataframe by filtering according to the values passed in.
+    # # Important to create a copy rather than affect the global object.
+    # cas = DataFrame(casualty[[
+    #                         'Casualty Age','Casualty Class']][
+    #                      (casualty['Casualty Severity'].isin(severity)) &
+    #                      (casualty['Day'].isin(weekdays)) &
+    #                      (casualty['Hour'].isin(hours)) &
+    #                      (casualty['Accident Year'].isin([year])) &
+    #                      (casualty['Accident Month'].isin(months))
+    #                      ]).reset_index()
+    # print(casualty.head())
+    # print(cas.head())
+    # # chosen = [point["customdata"] for point in main_graph_hover["points"]]
+    # # index, gas, oil, water = produce_individual(chosen[0])
+    # sct_grp = cas.groupby(["Casualty Age"]).size().reset_index(name='counts')
+    # joined = cas.merge(sct_grp, how ='inner', on='Casualty Age')
+    # indexed = sorted(joined['Casualty Age'], reverse=False)
+    # #indexed = indexed[indexed['Casualty Age']>0]
+    # #print("months are", joined)
+    # joined = joined.sort_values(by='Casualty Age')
+    if curve_graph_selected is None:
+        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    else:
+        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
 
-    # Create a copy of the dataframe by filtering according to the values passed in.
-    # Important to create a copy rather than affect the global object.
-    cas = DataFrame(casualty[[
-                            'Casualty Age','Casualty Class']][
-                         (casualty['Casualty Severity'].isin(severity)) &
-                         (casualty['Day'].isin(weekdays)) &
-                         (casualty['Hour'].isin(hours)) &
-                         (casualty['Accident Year'].isin([year])) &
-                         (casualty['Accident Month'].isin(months))
-                         ]).reset_index()
-    # chosen = [point["customdata"] for point in main_graph_hover["points"]]
-    # index, gas, oil, water = produce_individual(chosen[0])
-    sct_grp = cas.groupby(["Casualty Age"]).size().reset_index(name='counts')
-    joined = cas.merge(sct_grp, how ='inner', on='Casualty Age')
-    indexed = sorted(joined['Casualty Age'], reverse=False)
-    #print("months are", joined)
-    joined = joined.sort_values(by='Casualty Age')
-    #print(sct_grp_1)
-    # gas = grouped[['counts', 'Accident Month']][
-    #     (grouped['Accident Severity'] == 'Slight') & (grouped['Accident Month'].isin(indexed))]
-    # gas['Accident Month'] = pd.Categorical(gas['Accident Month'], categories=indexed, ordered=True)
-    # gas = gas.sort_values(by='Accident Month')
-    # # print("gas",gas.head())
-    # oil = grouped[['counts', 'Accident Month']][
-    #     (grouped['Accident Severity'] == 'Serious') & (grouped['Accident Month'].isin(indexed))]
-    # oil['Accident Month'] = pd.Categorical(oil['Accident Month'], categories=indexed, ordered=True)
-    # oil = oil.sort_values(by='Accident Month')
-    # water = grouped[['counts', 'Accident Month']][
-    #     (grouped['Accident Severity'] == 'Fatal') & (grouped['Accident Month'].isin(indexed))]
-    # water['Accident Month'] = pd.Categorical(water['Accident Month'], categories=indexed, ordered=True)
-    # water = water.sort_values(by='Accident Month')
+    print(months)
+    #print("selected data",check)
+    # The rangeslider is selects inclusively, but a python list stops before the last number in a range
+    hours = [i for i in range(time[0], time[1] + 1)]
+    # Take a copy of the dataframe, filtering it and grouping
+    acc2 = DataFrame(acc[[
+        'Day', 'Hour', 'No. of Casualties in Acc.']][
+                         (acc['Accident Severity'].isin(severity)) &
+                         (acc['Day'].isin(weekdays)) &
+                         (acc['Hour'].isin(hours)) &
+                         (acc['Accident Year'].isin([year])) &
+                         (acc['Accident Month'].isin(months))
+                         ].groupby(['Day', 'Hour']).sum()).reset_index()
+
+    # Apply text after grouping
+    def heatmapText(row):
+        return 'Day : {}<br>Time : {:02d}:00<br>Number of casualties: {}'.format(row['Day'],
+                                                                                 row['Hour'],
+                                                                                 row['No. of Casualties in Acc.'])
+
+    print(acc2.head())
+    # acc2['text'] = acc2.apply(heatmapText, axis=1)
+
+    # Pre-sort a list of days to feed into the heatmap
+    days = sorted(acc2['Day'].unique(), key=lambda k: DAYSORT[k])
+
+
+
+    # Create the z-values and text in a nested list format to match the shape of the heatmap
+    # z = []
+    # text = []
+    # for d in days:
+    #     row = acc2['No. of Casualties in Acc.'][acc2['Day'] == d].values.tolist()
+    #     t = acc2['text'][acc2['Day'] == d].values.tolist()
+    #     z.append(row)
+    #     text.append(t)
+    # print(hours)
 
     figure = {
         'data': [
-            {
-                'x': indexed,
-                'y': joined['counts'][joined['Casualty Class']=='Driver/Rider'],
-                'text': [joined['Casualty Class'].unique()],
-                #'customdata': ['c.a', 'c.b', 'c.c', 'c.d'],
-                'name': 'Driver/Rider',
-                'mode': 'markers',
-                'marker': {'size': 12}
-            },
-            {
-                'x': indexed,
-                'y': joined['counts'][joined['Casualty Class']=='Passenger'],
-                'text': [joined['Casualty Class'].unique()],
-                #'customdata': ['c.w', 'c.x', 'c.y', 'c.z'],
-                'name': 'Passenger',
-                'mode': 'markers',
-                'marker': {'size': 12}
-            },
-            {
-                'x': indexed,
-                'y': joined['counts'][joined['Casualty Class'] == 'Pedestrian'],
-                'text': [joined['Casualty Class'].unique()],
-                # 'customdata': ['c.w', 'c.x', 'c.y', 'c.z'],
-                'name': 'Pedestrian',
-                'mode': 'markers',
-                'marker': {'size': 12}
-            }
+            go.Scatter(
+                x=acc2['Hour'],
+                y=acc2['Day'],
+                #text=df[df['continent'] == i]['country'],
+                mode='markers',
+                opacity=0.8,
+                marker={
+                    'size': 30,
+                    'cmax': max(acc2['No. of Casualties in Acc.']),
+                    'cmin':min(acc2['No. of Casualties in Acc.']),
+                    'line': {'width': 0},
+                    'color': acc2['No. of Casualties in Acc.'],
+                    'colorscale': 'Viridis',
+                    'colorbar' :{'title':"Count"},
+                },
+
+            )
         ],
-    # figure={
-    #                     'data': [
-    #                         dict({
-    #                             x=indexed,
-    #                             y=sct_grp['counts'][sct_grp['Casualty Class']=='Driver/Rider'],
-    #                             text=[sct_grp['Casualty Class'].unique()],
-    #                             mode='markers',
-    #                             name = 'Driver/Rider',
-    #                             opacity=0.7,
-    #                             marker={
-    #                                 'size': 15,
-    #                                 'line': {'width': 0.5, 'color': 'white'}}
-    #                              },),
-    #                             # {
-    #                             # x=indexed,
-    #                             # y=sct_grp['counts'][sct_grp['Casualty Class']=='Passenger'],
-    #                             # text=[sct_grp['Casualty Class'].unique()],
-    #                             # mode='markers',
-    #                             # name = 'Passenger',
-    #                             # opacity=0.7,
-    #                             # marker={
-    #                             #     'size': 15,
-    #                             #     'line': {'width': 0.5, 'color': 'blue'}}
-    #                             #     },
-    #                             # {
-    #                             # x=indexed,
-    #                             # y=sct_grp['counts'][sct_grp['Casualty Class']=='Pedestrian'],
-    #                             # text=[sct_grp['Casualty Class'].unique()],
-    #                             # mode='markers',
-    #                             # name = 'Pedestrian',
-    #                             # opacity=0.7,
-    #                             # marker={
-    #                             #     'size': 15,
-    #                             #     'line': {'width': 0.5, 'color': 'green'}}
-    #                             #
-    #                             # }
-    #                     ],
-                        'layout': {
-                            'autosize': True,
-                            'automargin':True,
-                            'title':'Accidents with respect to Age and Casualty class',
-                            'xaxis':{'title': 'Casualty Age'},
-                            'yaxis':{'title': 'Number of Crashes'},
-                            'margin':{'l': 40, 'b': 40, 't': 80, 'r': 10},
-                            'legend':{'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
-                            'hovermode':'closest',
-                            'transition': {'duration': 500}
-                                }
-                        }
+
+        'layout': {
+                        'autosize': True,
+                        'automargin':True,
+                        'title':'Accidents with respect to Age and Casualty class',
+                        'xaxis':{'title': 'Hours'},
+                        'yaxis':{'title': 'Days'},
+                        #'margin':{'l': 40, 'b': 40, 't': 80, 'r': 10},
+                        'legend':{'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
+                        'hovermode':'closest',
+                        'transition': {'duration': 500}
+                   }
+                }
     return figure
 # Callback function passes the current value of all three filters into the update functions.
 # This on updates the bar.
@@ -579,10 +570,14 @@ def make_scatter(year, severity, weekdays, time, months):
      Input(component_id='dayChecklist', component_property='value'),
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
-     Input('well_statuses','value'),
+     Input('individual_graph','selectedData'),
      ]
 )
-def updateBarChart(severity, weekdays, time, year, months):
+def updateBarChart(severity, weekdays, time, year, curve_graph_selected):
+    if curve_graph_selected is None:
+        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    else:
+        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
     hours = [i for i in range(time[0], time[1] + 1)]
 
@@ -624,21 +619,9 @@ def updateBarChart(severity, weekdays, time, year, months):
 
     fig = {'data': traces,
            'layout': {
-               # 'paper_bgcolor': '#F9F9F9',
-               # 'plot_bgcolor': '#F9F9F9',
-               # 'font': {
-               #     'color': '#1a1919'
-               # },
-               # 'height': "60px",
                'autosize': True,
                'automargin': True,
                'title': 'Accidents by speed limit',
-               # 'margin': {  # Set margins to allow maximum space for the chart
-               #     'b': 25,
-               #     'l': 30,
-               #     't': 70,
-               #     'r': 0
-               # },
                'legend': {  # Horizontal legens, positioned at the bottom to allow maximum space for the chart
                    'orientation': 'h',
                    'x': 0,
@@ -665,10 +648,18 @@ def updateBarChart(severity, weekdays, time, year, months):
      Input(component_id='dayChecklist', component_property='value'),
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
-     Input('well_statuses','value'),
+     Input('individual_graph','selectedData'),
      ]
 )
-def updateHeatmap(severity, weekdays, time, year, months):
+def updateHeatmap(severity, weekdays, time, year,curve_graph_selected):
+    print(curve_graph_selected)
+    if curve_graph_selected is None:
+        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    else:
+        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
+
+    print(months)
+    #print("selected data",check)
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
     hours = [i for i in range(time[0], time[1] + 1)]
     # Take a copy of the dataframe, filtering it and grouping
@@ -724,28 +715,16 @@ def updateHeatmap(severity, weekdays, time, year, months):
 
     fig = {'data': traces,
            'layout': {
-               # 'paper_bgcolor': '#F9F9F9',
-               # 'font': {
-               #     'color': '#1a1919'
-               # },
-               # 'height': 300,
-               # 'width': 100,
                'autosize': True,
                'automargin': True,
                'title': 'Accidents by time and day',
-               # 'margin': {
-               #     'b': 0,
-               #     'l': 0,
-               #     't': 0,
-               #     'r': 0,
-               # },
                'xaxis': {
                    'ticktext': hours,  # for the tickvals and ticktext with one for each hour
                    'tickvals': hours,
                    'tickmode': 'array',
                },
                'transition': {
-                   'duration': 1000}
+                   'duration': 500}
            }}
     return fig
 
@@ -757,10 +736,14 @@ def updateHeatmap(severity, weekdays, time, year, months):
      Input(component_id='dayChecklist', component_property='value'),
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
-     Input('well_statuses','value'),
+     Input('individual_graph','selectedData'),
      ]
 )
-def updateMapBox(severity, weekdays, time, year, months):
+def updateMapBox(severity, weekdays, time, year, curve_graph_selected):
+    if curve_graph_selected is None:
+        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    else:
+        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
     # List of hours again
     hours = [i for i in range(time[0], time[1] + 1)]
     # Filter the dataframe
@@ -818,8 +801,6 @@ def updateMapBox(severity, weekdays, time, year, months):
 
         })
     layout = {
-        # 'height': 510,
-        # 'height': "300px",
         'paper_bgcolor': '#F9F9F9',
         'font': {
             'color': '#1a1919'
@@ -859,9 +840,9 @@ def updateMapBox(severity, weekdays, time, year, months):
                Input('severityChecklist', 'value'),
                Input('dayChecklist', 'value'),
                Input('hourSlider', 'value'),
-               Input('well_statuses','value'),
                ])
-def make_individual_figure(year, severity, weekdays, time, months):
+def make_individual_figure(year, severity, weekdays, time):
+
     hours = [i for i in range(time[0], time[1] + 1)]
     # Create a copy of the dataframe by filtering according to the values passed in.
     # Important to create a copy rather than affect the global object.
@@ -870,8 +851,7 @@ def make_individual_figure(year, severity, weekdays, time, months):
                          (acc['Accident Severity'].isin(severity)) &
                          (acc['Day'].isin(weekdays)) &
                          (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year])) &
-                         (acc['Accident Month'].isin(months))
+                         (acc['Accident Year'].isin([year]))
                          ]).reset_index()
     # chosen = [point["customdata"] for point in main_graph_hover["points"]]
     # index, gas, oil, water = produce_individual(chosen[0])
@@ -889,20 +869,6 @@ def make_individual_figure(year, severity, weekdays, time, months):
     water['Accident Month'] = pd.Categorical(water['Accident Month'], categories=indexed, ordered=True)
     water = water.sort_values(by='Accident Month')
 
-
-    # if index is None:
-    #     annotation = dict(
-    #         text="No data available",
-    #         x=0.5,
-    #         y=0.5,
-    #         align="center",
-    #         showarrow=False,
-    #         xref="paper",
-    #         yref="paper",
-    #     )
-    #     layout_individual["annotations"] = [annotation]
-    #     data = []
-    # else:
     data = [
         dict(
             type="scatter",
@@ -933,21 +899,9 @@ def make_individual_figure(year, severity, weekdays, time, months):
         ),
     ]
     layout = {
-        # 'paper_bgcolor': '#F9F9F9',
-        # 'plot_bgcolor': '#F9F9F9',
-        # 'font': {
-        #     'color': '#1a1919'
-        # },
-        # 'height': "60px",
         'autosize': True,
         'automargin': True,
         'title': 'Accidents in different months',
-        # 'margin': {  # Set margins to allow maximum space for the chart
-        #     'b': 25,
-        #     'l': 30,
-        #     't': 70,
-        #     'r': 0
-        # },
         'legend': {  # Horizontal legens, positioned at the bottom to allow maximum space for the chart
             'orientation': 'h',
             'x': 0,
@@ -978,10 +932,14 @@ def make_individual_figure(year, severity, weekdays, time, months):
      Input('severityChecklist', 'value'),
      Input('dayChecklist', 'value'),
      Input('hourSlider', 'value'),
-     Input('well_statuses','value'),
+     Input('individual_graph','selectedData'),
      ]
 )
-def update_text(year,severity, weekdays, time, months):
+def update_text(year,severity, weekdays, time, curve_graph_selected):
+    if curve_graph_selected is None:
+        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    else:
+        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
     hours = [i for i in range(time[0], time[1] + 1)]
 
     # Create a copy of the dataframe by filtering according to the values passed in.
@@ -1028,10 +986,14 @@ def update_text(year,severity, weekdays, time, months):
     ],
     [Input('year_slider_weather', 'value'),
      Input('severityChecklist_weather', 'value'),
-     Input('well_statuses_weather','value'),
+     Input('individual_graph','selectedData'),
      ]
 )
-def update_text_weather(year,severity, months):
+def update_text_weather(year,severity, curve_graph_selected):
+    if curve_graph_selected is None:
+        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    else:
+        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
 
     # Create a copy of the dataframe by filtering according to the values passed in.
     # Important to create a copy rather than affect the global object.

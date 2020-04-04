@@ -44,7 +44,7 @@ FONT_FAMILY = "Arial"
 # acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
 # casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-casualty = read_csv("data/casualty_df_age_grp.csv", index_col=0).dropna(how='any', axis=0)
+casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
 
 # Remove observations where speed limit is 0 or 10. There's only three and it adds a lot of
@@ -238,6 +238,22 @@ app.layout = html.Div([
                                 'margin': '10px'
                             },
                         ),
+                        dcc.Graph(id='year-graph',
+                        figure={
+                            'data': [
+                                {'x': acc.groupby(["Accident Year"]).size().reset_index(name='counts')['Accident Year'], 
+                                 'y': acc.groupby(["Accident Year"]).size().reset_index(name='counts')['counts'], 
+                                 'type': 'bar',
+                                 'marker': {'color': '#99cfe0','width': 0.1}
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Filter by Years',
+                                'xaxis':{'title': 'Year','dtick' :1},
+                                'bargap':0.5,
+                                'height':300
+                            }
+                        })
                     ],
                     className="pretty_container four columns",
                     id="cross-filter-options",
@@ -490,7 +506,6 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
     else:
         months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
 
-    print(months)
     #print("selected data",check)
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
     hours = [i for i in range(time[0], time[1] + 1)]
@@ -510,7 +525,6 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
                                                                                  row['Hour'],
                                                                                  row['No. of Casualties in Acc.'])
 
-    print(acc2.head())
     # acc2['text'] = acc2.apply(heatmapText, axis=1)
 
     # Pre-sort a list of days to feed into the heatmap
@@ -532,17 +546,18 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
         'data': [
             go.Scatter(
                 x=acc2['Hour'],
-                y=acc2['Day'],
+                y=sorted(acc2['Day'], key=lambda k: DAYSORT[k]),
                 #text=df[df['continent'] == i]['country'],
                 mode='markers',
+                marker_symbol='square',
                 opacity=0.8,
                 marker={
-                    'size': 30,
+                    'size': 34,
                     'cmax': max(acc2['No. of Casualties in Acc.']),
                     'cmin':min(acc2['No. of Casualties in Acc.']),
                     'line': {'width': 0},
                     'color': acc2['No. of Casualties in Acc.'],
-                    'colorscale': 'Viridis',
+                    'colorscale': 'blues',
                     'colorbar' :{'title':"Count"},
                 },
 
@@ -552,8 +567,8 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
         'layout': {
                         'autosize': True,
                         'automargin':True,
-                        'title':'Accidents with respect to Age and Casualty class',
-                        'xaxis':{'title': 'Hours'},
+                        'title':'Accidents with respect to Day and Time',
+                        'xaxis':{'title': 'Hours','dtick' :1,'range':[0,24]},
                         'yaxis':{'title': 'Days'},
                         #'margin':{'l': 40, 'b': 40, 't': 80, 'r': 10},
                         'legend':{'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
@@ -652,13 +667,11 @@ def updateBarChart(severity, weekdays, time, year, curve_graph_selected):
      ]
 )
 def updateHeatmap(severity, weekdays, time, year,curve_graph_selected):
-    print(curve_graph_selected)
     if curve_graph_selected is None:
         months = ['January','February','March','April','May','June','July','August','September','October','November','December']
     else:
         months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
 
-    print(months)
     #print("selected data",check)
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
     hours = [i for i in range(time[0], time[1] + 1)]

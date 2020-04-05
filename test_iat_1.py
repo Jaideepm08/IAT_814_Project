@@ -76,13 +76,18 @@ app.layout = html.Div([
             [
                 html.Div(
                     [
-                        html.Img(
-                            src=app.get_asset_url("london.png"),
-                            id="plotly-image",
+                        dcc.Upload(
+                            id='upload-data',
+                            children=html.Div([html.A('Custom Dataset')]),
                             style={
-                                "height": "70px",
-                                "width": "auto",
-                                "margin-bottom": "25px",
+                                'width': '90%',
+                                'height': '60px',
+                                'lineHeight': '60px',
+                                'borderWidth': '1px',
+                                'borderStyle': 'dashed',
+                                'borderRadius': '5px',
+                                'textAlign': 'center',
+                                'margin': '10px'
                             },
                         )
                     ],
@@ -123,7 +128,7 @@ app.layout = html.Div([
 
 
         dcc.Tabs([
-        dcc.Tab(label='General', children=[
+        dcc.Tab(label='Date and Time', children=[
         html.Div(
             [
                 html.Div(
@@ -141,35 +146,11 @@ app.layout = html.Div([
                             included=False,
                             marks={years: years for years in range(2010, 2018)},
                             className="dcc_control",
+                            
                             updatemode='mouseup'
                         ),
                         html.Br(),
-                        html.P("Filter by Accident Severity:", className="control_label",
-                               style={'font-weight': 'bold'}),
-
-                        # dcc.RadioItems(
-                        #     id="well_status_selector",
-                        #     options=[
-                        #         {"label": "All ", "value": "all"},
-                        #         {"label": "Active only ", "value": "active"},
-                        #         {"label": "Customize ", "value": "custom"},
-                        #     ],
-                        #     value="active",
-                        #     labelStyle={"display": "inline-block"},
-                        #     className="dcc_control",
-                        # ),
-                        dcc.Checklist(  # Checklist for the three different severity values
-                            options=[
-                                {'label': sev, 'value': sev} for sev in acc['Accident Severity'].unique()
-                            ],
-                            value=[sev for sev in acc['Accident Severity'].unique()],
-                            inputStyle={
-                                        'background': 'red'
-                                        },
-                            className="check",
-                            id="severityChecklist",
-
-                        ),
+                    
                         html.Br(),
                         html.P("   Filter by Month:", className="control_label", style={'font-weight': 'bold'}),
                         html.Br(),
@@ -219,26 +200,30 @@ app.layout = html.Div([
                             tooltip={'always_visible': False},
                             value=[acc['Hour'].min(), acc['Hour'].max()],
                             className="dcc_control",
+                        )   
+                    ],
+                    className="pretty_container four columns",
+                    style={'display':'none'},
+                    id="cross-filter-options",
+                ),
+                html.Div([
+                        html.P("Filter by Accident Severity:", className="control_label",
+                               style={'font-weight': 'bold'}),
+                        dcc.Checklist(  # Checklist for the three different severity values
+                            options=[
+                                {'label': sev, 'value': sev} for sev in acc['Accident Severity'].unique()
+                            ],
+                            value=[sev for sev in acc['Accident Severity'].unique()],
+                            inputStyle={
+                                        'background': 'red'
+                                        },
+                            labelStyle={'display': 'inline-block'},       
+                            className="check",
+                            id="severityChecklist",
+
                         ),
-                        html.P("Upload your data:", className="control_label", style={'font-weight': 'bold'}),
-                        dcc.Upload(
-                            id='upload-data',
-                            children=html.Div([
-                                'Drag and Drop or ',
-                                html.A('Select Files')
-                            ]),
-                            style={
-                                'width': '90%',
-                                'height': '60px',
-                                'lineHeight': '60px',
-                                'borderWidth': '1px',
-                                'borderStyle': 'dashed',
-                                'borderRadius': '5px',
-                                'textAlign': 'center',
-                                'margin': '10px'
-                            },
-                        ),
-                        dcc.Graph(id='year-graph',
+                    html.Br(),
+                     dcc.Graph(id='year-graph',
                         figure={
                             'data': [
                                 {'x': acc.groupby(["Accident Year"]).size().reset_index(name='counts')['Accident Year'], 
@@ -249,15 +234,16 @@ app.layout = html.Div([
                             ],
                             'layout': {
                                 'title': 'Filter by Years',
+                                'clickmode': 'event+select',
                                 'xaxis':{'title': 'Year','dtick' :1},
                                 'bargap':0.5,
                                 'height':300
                             }
-                        })
-                    ],
-                    className="pretty_container four columns",
-                    id="cross-filter-options",
-                ),
+                        })   
+                ],
+                className="pretty_container four columns",
+                #style={'display':'none'},
+                id="cross-filter-graphs",),
                 html.Div(
                     [
                         html.Div(
@@ -462,6 +448,31 @@ app.layout = html.Div([
     style={"display": "flex", "flex-direction": "column"},
 )
 
+#This callback takes input from year-graph and gives output to year_slider
+@app.callback(
+    Output('year_slider', 'value'),
+    [Input('year-graph', 'clickData')])
+def display_click_data(clickData):
+    if clickData is None:
+        return 2012
+    return clickData['points'][0]['x']
+
+#This callback takes input from heatmap and ouputs in day of week dropdown
+@app.callback(
+    [Output('dayChecklist', 'value'),
+     Output('hourSlider','value')],
+    [Input('pie_graph', 'selectedData')])
+def display_click_data_weekday(selectedData):
+    if selectedData is None:
+        return [day for day in acc['Day'].unique()],[acc['Hour'].min(), acc['Hour'].max()]
+    no_of_pts = len(selectedData['points'])
+    x_list = []
+    y_list = []
+    for i in range(0,no_of_pts):
+        x_list.append(selectedData['points'][i]['x'])
+        y_list.append(selectedData['points'][i]['y'])
+    print(y_list,x_list)
+    return list(set(y_list)),[min(x_list),max(x_list)]   
 
 ## APP INTERACTIVITY THROUGH CALLBACK FUNCTIONS TO UPDATE THE CHARTS ##
 #Callback for scatter plot "pie_graph"
@@ -474,33 +485,6 @@ app.layout = html.Div([
                Input('heatmap','selectedData'),
                ])
 def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_selected):
-    # if curve_graph_selected is None:
-    #     months = ['January','February','March','April','May','June','July','August','September','October','November','December']
-    # else:
-    #     months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
-    # print(heat_map_selected)
-    # hours = [i for i in range(time[0], time[1] + 1)]
-    #
-    # # Create a copy of the dataframe by filtering according to the values passed in.
-    # # Important to create a copy rather than affect the global object.
-    # cas = DataFrame(casualty[[
-    #                         'Casualty Age','Casualty Class']][
-    #                      (casualty['Casualty Severity'].isin(severity)) &
-    #                      (casualty['Day'].isin(weekdays)) &
-    #                      (casualty['Hour'].isin(hours)) &
-    #                      (casualty['Accident Year'].isin([year])) &
-    #                      (casualty['Accident Month'].isin(months))
-    #                      ]).reset_index()
-    # print(casualty.head())
-    # print(cas.head())
-    # # chosen = [point["customdata"] for point in main_graph_hover["points"]]
-    # # index, gas, oil, water = produce_individual(chosen[0])
-    # sct_grp = cas.groupby(["Casualty Age"]).size().reset_index(name='counts')
-    # joined = cas.merge(sct_grp, how ='inner', on='Casualty Age')
-    # indexed = sorted(joined['Casualty Age'], reverse=False)
-    # #indexed = indexed[indexed['Casualty Age']>0]
-    # #print("months are", joined)
-    # joined = joined.sort_values(by='Casualty Age')
     if curve_graph_selected is None:
         months = ['January','February','March','April','May','June','July','August','September','October','November','December']
     else:
@@ -565,14 +549,12 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
         ],
 
         'layout': {
-                        'autosize': True,
-                        'automargin':True,
+                        'clickmode': 'event+select',
                         'title':'Accidents with respect to Day and Time',
                         'xaxis':{'title': 'Hours','dtick' :1,'range':[0,24]},
                         'yaxis':{'title': 'Days'},
                         #'margin':{'l': 40, 'b': 40, 't': 80, 'r': 10},
                         'legend':{'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
-                        'hovermode':'closest',
                         'transition': {'duration': 500}
                    }
                 }
@@ -585,7 +567,7 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
      Input(component_id='dayChecklist', component_property='value'),
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
-     Input('individual_graph','selectedData'),
+     Input('individual_graph','selectedData')
      ]
 )
 def updateBarChart(severity, weekdays, time, year, curve_graph_selected):

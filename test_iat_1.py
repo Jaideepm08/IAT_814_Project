@@ -224,22 +224,7 @@ app.layout = html.Div([
                         ),
                     html.Br(),
                      dcc.Graph(id='year-graph',
-                        figure={
-                            'data': [
-                                {'x': acc.groupby(["Accident Year"]).size().reset_index(name='counts')['Accident Year'], 
-                                 'y': acc.groupby(["Accident Year"]).size().reset_index(name='counts')['counts'], 
-                                 'type': 'bar',
-                                 'marker': {'color': '#99cfe0','width': 0.1}
-                                 }                                
-                            ],
-                            'layout': {
-                                'title': 'Filter by Years',
-                                'clickmode': 'event+select',
-                                'xaxis':{'title': 'Year','dtick' :1},
-                                'bargap':0.5,
-                                'height':300
-                            }
-                        })   
+                        )   
                 ],
                 className="pretty_container four columns",
                 #style={'display':'none'},
@@ -471,7 +456,6 @@ def display_click_data_weekday(selectedData):
     for i in range(0,no_of_pts):
         x_list.append(selectedData['points'][i]['x'])
         y_list.append(selectedData['points'][i]['y'])
-    print(y_list,x_list)
     return list(set(y_list)),[min(x_list),max(x_list)]   
 
 ## APP INTERACTIVITY THROUGH CALLBACK FUNCTIONS TO UPDATE THE CHARTS ##
@@ -529,7 +513,7 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
     figure = {
         'data': [
             go.Scatter(
-                x=acc2['Hour'],
+                x=acc2['Hour'].apply(lambda w: "{}{}".format(w,':00')),
                 y=sorted(acc2['Day'], key=lambda k: DAYSORT[k]),
                 #text=df[df['continent'] == i]['country'],
                 mode='markers',
@@ -537,9 +521,10 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
                 opacity=0.8,
                 marker={
                     'size': 34,
+                    'line':{'width':2,'color':'DarkSlateGrey'},
                     'cmax': max(acc2['No. of Casualties in Acc.']),
                     'cmin':min(acc2['No. of Casualties in Acc.']),
-                    'line': {'width': 0},
+                    #'line': {'width': 0},
                     'color': acc2['No. of Casualties in Acc.'],
                     'colorscale': 'blues',
                     'colorbar' :{'title':"Count"},
@@ -551,7 +536,7 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
         'layout': {
                         'clickmode': 'event+select',
                         'title':'Accidents with respect to Day and Time',
-                        'xaxis':{'title': 'Hours','dtick' :1,'range':[0,24]},
+                        'xaxis':{'title': 'Hours','dtick' :2,'range':[0,24]},
                         'yaxis':{'title': 'Days'},
                         #'margin':{'l': 40, 'b': 40, 't': 80, 'r': 10},
                         'legend':{'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
@@ -828,7 +813,31 @@ def updateMapBox(severity, weekdays, time, year, curve_graph_selected):
     fig = dict(data=traces, layout=layout)
     return fig
 
-
+#make year-graph
+@app.callback(Output("year-graph", "figure"),
+              [Input('severityChecklist', 'value')])
+def make_year_graph(severity):
+    acc2 = DataFrame(acc[[
+        'Accident Severity', 'Accident Year']][
+                         (acc['Accident Severity'].isin(severity))   
+                         ]).reset_index()
+    figure={
+                            'data': [
+                                {'x': acc2.groupby(["Accident Year"]).size().reset_index(name='counts')['Accident Year'], 
+                                 'y': acc2.groupby(["Accident Year"]).size().reset_index(name='counts')['counts'], 
+                                 'type': 'bar',
+                                 'marker': {'color': '#99cfe0','width': 0.1}
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Filter by Years',
+                                'clickmode': 'event+select',
+                                'xaxis':{'title': 'Year','dtick' :1},
+                                'bargap':0.5,
+                                'height':300
+                            }
+                        }
+    return figure
 # Main graph -> individual graph
 @app.callback(Output("individual_graph", "figure"),
               [Input('year_slider', 'value'),
@@ -871,8 +880,9 @@ def make_individual_figure(year, severity, weekdays, time):
             name="Slight",
             x=indexed,
             y=gas['counts'],
-            line=dict(shape="spline", smoothing=2, width=1, color="#FFE50C"),
-            marker=dict(symbol="diamond-open"),
+            line=dict(shape="spline", smoothing=2, width=3, color="#FFE50C"),
+            marker=dict(symbol="diamond-open",size=8,line=dict(width=2,
+                                        color='DarkSlateGrey')),
         ),
         dict(
             type="scatter",
@@ -880,8 +890,9 @@ def make_individual_figure(year, severity, weekdays, time):
             name="Serious",
             x=indexed,
             y=oil['counts'],
-            line=dict(shape="spline", smoothing=2, width=1, color="#F78E09"),
-            marker=dict(symbol="diamond-open"),
+            line=dict(shape="spline", smoothing=2, width=3, color="#F78E09"),
+            marker=dict(symbol="diamond-open",size=8,line=dict(width=2,
+                                        color='DarkSlateGrey')),
         ),
         dict(
             type="scatter",
@@ -889,8 +900,9 @@ def make_individual_figure(year, severity, weekdays, time):
             name="Fatal",
             x=indexed,
             y=water['counts'],
-            line=dict(shape="spline", smoothing=2, width=1, color="#DA240B"),
-            marker=dict(symbol="diamond-open"),
+            line=dict(shape="spline", smoothing=2, width=3, color="#DA240B"),
+            marker=dict(symbol="diamond-open",size=8,line=dict(width=2,
+                                        color='DarkSlateGrey')),
         ),
     ]
     layout = {

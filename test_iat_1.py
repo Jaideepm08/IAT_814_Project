@@ -41,10 +41,10 @@ FONT_FAMILY = "Arial"
 
 
 # Read in data from csv stored on github
-# acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-# casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
-acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
+casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+# acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
+# casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
 
 # Remove observations where speed limit is 0 or 10. There's only three and it adds a lot of
@@ -456,7 +456,7 @@ def display_click_data_weekday(selectedData):
     for i in range(0,no_of_pts):
         x_list.append(selectedData['points'][i]['x'])
         y_list.append(selectedData['points'][i]['y'])
-    return list(set(y_list)),[min(x_list),max(x_list)]   
+    return list(set(y_list)),[int(min(x_list)),int(max(x_list))]   
 
 ## APP INTERACTIVITY THROUGH CALLBACK FUNCTIONS TO UPDATE THE CHARTS ##
 #Callback for scatter plot "pie_graph"
@@ -815,11 +815,23 @@ def updateMapBox(severity, weekdays, time, year, curve_graph_selected):
 
 #make year-graph
 @app.callback(Output("year-graph", "figure"),
-              [Input('severityChecklist', 'value')])
-def make_year_graph(severity):
+              [Input('severityChecklist', 'value'),
+               Input('dayChecklist', 'value'),
+               Input('hourSlider', 'value'),
+               Input('individual_graph','selectedData')])
+def make_year_graph(severity,weekdays,time,curve_graph_selected):
+    hours = [i for i in range(time[0], time[1] + 1)]
+    if curve_graph_selected is None:
+        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    else:
+        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
+    hours = [i for i in range(time[0], time[1] + 1)]
     acc2 = DataFrame(acc[[
         'Accident Severity', 'Accident Year']][
-                         (acc['Accident Severity'].isin(severity))   
+                         (acc['Accident Severity'].isin(severity))&
+                         (acc['Day'].isin(weekdays)) &
+                         (acc['Hour'].isin(hours)) &
+                         (acc['Accident Month'].isin(months))   
                          ]).reset_index()
     figure={
                             'data': [

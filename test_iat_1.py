@@ -41,10 +41,10 @@ FONT_FAMILY = "Arial"
 
 
 # Read in data from csv stored on github
-acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
-# acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-# casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+# acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
+# casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
+casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
 
 # Remove observations where speed limit is 0 or 10. There's only three and it adds a lot of
@@ -408,18 +408,26 @@ app.layout = html.Div([
                             className="row container-display",
                         ),
                         html.Div(
-                            [dcc.Graph()],
+                            [dcc.Graph('weather-histogram'),
+                             
+                            ],
                             id="weatherGraphContainer",
                             className="pretty_container",
                         ),
+                    
                     ],
                     id="right-column_weather",
                     className="eight columns",
                 ),
             ],
             className="row flex-display",
+        ),
+        html.Div([dcc.Graph(id='precipitation_graph')],
+        className="pretty_container four columns"
+        ),
+        html.Div([dcc.Graph(id='snow_graph')],
+        className="pretty_container four columns"
         )
-               
                
                
                
@@ -861,10 +869,12 @@ def make_temp_graph(severity):
                          ]).reset_index()
     figure={
                             'data': [
-                                {'x': acc2.groupby(["Temp"]).size().reset_index(name='counts')['Temp'], 
+                                {
+                                 'mode':"lines+markers",
+                                 'x': acc2.groupby(["Temp"]).size().reset_index(name='counts')['Temp'], 
                                  'y': acc2.groupby(["Temp"]).size().reset_index(name='counts')['counts'], 
-                                 'type': 'line',
-                                 #'marker': {'color': '#99cfe0','width': 0.1}
+                                 'type': 'scatter',
+                                 'marker': {'color': '#ee9e07'}
                                  }                                
                             ],
                             'layout': {
@@ -876,6 +886,134 @@ def make_temp_graph(severity):
                             }
                         }
     return figure
+
+#make precipitation_graph
+@app.callback(Output("precipitation_graph", "figure"),
+              [Input('severityChecklist_weather', 'value'),
+               Input('temp_graph','selectedData')])
+def make_precipitation_graph(severity,selected_temp):
+    if selected_temp is None:
+        tmps = [temp for temp in acc['Temp'].unique()]
+    else:
+        tmps = [str(t["x"]) for t in selected_temp["points"]]
+    acc2 = DataFrame(acc[[
+        'Accident Severity', 'Temp','Precipitation']][
+                         (acc['Accident Severity'].isin(severity))&
+                          acc['Temp'].isin(tmps)
+                         ]).reset_index()
+
+    
+    precc = acc2.groupby(["Precipitation"]).size().reset_index(name='counts')
+    #precc = precc[(precc['Precipitation'] != 0)]
+    figure={
+                            'data': [
+                                {
+                                 'mode':"markers",
+                                 'x': precc['Precipitation'], 
+                                 'y': precc['counts'], 
+                                 'type': 'scatter',
+                                 'marker': {'color': '#99cfe0'}
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Filter by Precipitation',
+                                'clickmode': 'event+select',
+                                'xaxis':{'title': 'Precipitation(mm)','dtick' :4}
+                            }
+                        }
+    return figure
+
+#weather-histogram
+@app.callback(Output("weather-histogram", "figure"),
+              [Input('severityChecklist_weather', 'value'),
+               Input('temp_graph','selectedData'),
+               Input('precipitation_graph','selectedData')
+               ])
+def make_weather_histogram(severity,selected_temp,selected_precs):
+    if selected_temp is None:
+        tmps = [temp for temp in acc['Temp'].unique()]
+    else:
+        tmps = [str(t["x"]) for t in selected_temp["points"]]
+    
+    if selected_precs is None:
+        precs = [p for p in acc['Precipitation'].unique()]
+    else:
+        precs = [str(t["x"]) for t in selected_precs["points"]] 
+        
+    acc2 = DataFrame(acc[[
+        'Accident Severity', 'Temp','Precipitation','Weather']][
+                         (acc['Accident Severity'].isin(severity))&
+                          acc['Temp'].isin(tmps)&
+                          acc['Precipitation'].isin(precs)
+                         ]).reset_index()
+    figure={
+                            'data': [
+                                {'x': acc2.groupby(["Weather"]).size().reset_index(name='counts')['Weather'], 
+                                 'y': acc2.groupby(["Weather"]).size().reset_index(name='counts')['counts'], 
+                                 'type': 'bar',
+                                 'marker': {'color': '#99cfe0','width': 3}
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Weather Conditions',
+                                'clickmode': 'event+select',
+                                'xaxis':{'title': 'Weather'},
+                            }
+                        }
+
+    return figure
+
+#make snow_graph
+@app.callback(Output("snow_graph", "figure"),
+              [Input('severityChecklist_weather', 'value'),
+               Input('temp_graph','selectedData'),
+               Input('precipitation_graph','selectedData'),
+               Input('weather-histogram','clickData')])
+def make_snow_graph(severity,selected_temp,selected_precs,clicked_bar):
+    if selected_temp is None:
+        tmps = [temp for temp in acc['Temp'].unique()]
+    else:
+        tmps = [str(t["x"]) for t in selected_temp["points"]]
+    
+    if selected_precs is None:
+        precs = [p for p in acc['Precipitation'].unique()]
+    else:
+        precs = [str(t["x"]) for t in selected_precs["points"]] 
+    
+    if clicked_bar is None:
+        weather_conditions = [w for w in acc['Weather'].unique()]
+    else:
+        weather_conditions = [clicked_bar['points'][0]['x']]
+        
+    acc2 = DataFrame(acc[[
+        'Accident Severity', 'Temp','Precipitation','Weather','Snowfall Amount']][
+                         (acc['Accident Severity'].isin(severity))&
+                          acc['Temp'].isin(tmps)&
+                          acc['Precipitation'].isin(precs)&
+                          acc['Weather'].isin(weather_conditions)
+                         ]).reset_index()
+
+    
+    #precc = acc2.groupby(["Precipitation"]).size().reset_index(name='counts')
+    #precc = precc[(precc['Precipitation'] != 0)]
+    figure={
+                            'data': [
+                                {
+                                 'mode':"lines+markers",
+                                 'x': acc2.groupby(["Snowfall Amount"]).size().reset_index(name='counts')['Snowfall Amount'], 
+                                 'y': acc2.groupby(["Snowfall Amount"]).size().reset_index(name='counts')['counts'], 
+                                 'type': 'scatter',
+                                 'marker': {'color': '#FF6347'}
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Filter by Amount of Snowfall',
+                                'clickmode': 'event+select',
+                                'xaxis':{'title': 'Snowfall(cm)','dtick' :1}
+                            }
+                        }
+    return figure
+
 # Main graph -> individual graph
 @app.callback(Output("individual_graph", "figure"),
               [Input('year_slider', 'value'),

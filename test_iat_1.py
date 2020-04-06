@@ -43,8 +43,8 @@ FONT_FAMILY = "Arial"
 
 # Read in data from csv stored on github
 
-acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv").dropna(how='any', axis=0)
-casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df_age_grp.csv").dropna(how='any', axis=0)
+acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv").dropna(how='any', axis=0)
+casualty = read_csv("data/casualty_df_age_grp.csv").dropna(how='any', axis=0)
 # acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
 # casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 
@@ -665,7 +665,6 @@ def updateHeatmap(severity, weekdays, time, year,curve_graph_selected):
                          (merged['Accident Year_x'].isin([year])) &
                          (merged['Accident Month_x'].isin(months))
                          ]).groupby(['Total','Road Surface','Light Conditions (Banded)','age_by_decade','Accident Severity']).sum().reset_index()
-    print(cas2.head())
     # cas_sl = cas2[cas2['Casualty Severity'] == 'Slight'].sample(frac=0.1)
     # cas_se = cas2[cas2['Casualty Severity'] == 'Serious'].sample(frac=0.2)
     # cas_fa = cas2[cas2['Casualty Severity'] == 'Fatal'].sample(frac=1)
@@ -673,7 +672,7 @@ def updateHeatmap(severity, weekdays, time, year,curve_graph_selected):
     # cas4 = cas3.append(cas_fa, ignore_index=True)
     fig = px.sunburst(cas2, path=['Total','Accident Severity','Road Surface', 'Light Conditions (Banded)', 'age_by_decade'],\
                       values='No. of Casualties in Acc.',color='No. of Casualties in Acc.',branchvalues="total",color_continuous_scale='blues',)
-    fig.update_layout(margin=dict(t=0, l=0, r=0, b=0))
+    fig.update_layout(margin=dict(t=0, l=0, r=0, b=0),transition = {'duration': 500})
 
     # # Apply text after grouping
     # def heatmapText(row):
@@ -927,13 +926,21 @@ def make_precipitation_graph(severity,selected_temp):
                                  'x': precc['Precipitation'], 
                                  'y': precc['counts'], 
                                  'type': 'scatter',
-                                 'marker': {'color': '#99cfe0'}
+                                 'marker':dict(	
+                                    color='rgba(135, 206, 250, 0.7)',	
+                                    size=8,	
+                                    line=dict(	
+                                        color='MediumPurple',	
+                                        width=0.8	
+                                    )	
+                                )
                                  }                                
                             ],
                             'layout': {
                                 'title': 'Filter by Precipitation',
                                 'clickmode': 'event+select',
-                                'xaxis':{'title': 'Precipitation(mm)','dtick' :4}
+                                'xaxis':{'title': 'Precipitation(mm)','dtick':4},	
+                                'yaxis':{'range':[0,2000]}
                             }
                         }
     return figure
@@ -961,19 +968,20 @@ def make_weather_histogram(severity,selected_temp,selected_precs):
                           acc['Temp'].isin(tmps)&
                           acc['Precipitation'].isin(precs)
                          ]).reset_index()
-    figure={
-                            'data': [
-                                {'x': acc2.groupby(["Weather"]).size().reset_index(name='counts')['Weather'], 
-                                 'y': acc2.groupby(["Weather"]).size().reset_index(name='counts')['counts'], 
-                                 'type': 'bar',
-                                 'marker': {'color': '#99cfe0','width': 3}
-                                 }                                
-                            ],
-                            'layout': {
-                                'title': 'Weather Conditions',
-                                'clickmode': 'event+select',
-                                'xaxis':{'title': 'Weather'},
-                            }
+    figure={	
+                            'data': [	
+                                {'y': acc2.groupby(["Weather"]).size().reset_index(name='counts')['Weather'], 	
+                                 'x': acc2.groupby(["Weather"]).size().reset_index(name='counts')['counts'], 	
+                                 'type': 'bar',	
+                                 'orientation':'h',	
+                                 'marker': {'color': ['#99cfe0','red','#51A9AC','green','yellow','orange','crimson','#1452E2','#3D680C'],'width': 3}	
+                                 }                                	
+                            ],	
+                            'layout': {	
+                                'title': 'Weather Conditions',	
+                                'clickmode': 'event+select',	
+                                'xaxis':{'title': 'Weather','range':[0,10000]},	
+                            }	
                         }
 
     return figure
@@ -1024,7 +1032,8 @@ def make_snow_graph(severity,selected_temp,selected_precs,clicked_bar):
                             'layout': {
                                 'title': 'Filter by Amount of Snowfall',
                                 'clickmode': 'event+select',
-                                'xaxis':{'title': 'Snowfall(cm)','dtick' :1}
+                                'xaxis':{'title': 'Snowfall(cm)','dtick' :1},	
+                                'yaxis':{'range':[0,310]}
                             }
                         }
     return figure

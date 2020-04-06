@@ -5,6 +5,7 @@ import dash
 import flask
 import pandas as pd
 import plotly.graph_objs as go
+import plotly.express as px
 
 
 from dash.dependencies import Input, Output, State
@@ -41,8 +42,9 @@ FONT_FAMILY = "Arial"
 
 
 # Read in data from csv stored on github
-acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+acc = read_csv("/Users/jaideepmishra/Downloads/IAT_814_Project/Attendant_10-17_lat_lon_sample.csv").dropna(how='any', axis=0)
+casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df_age_grp.csv").dropna(how='any', axis=0)
+
 # acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
 # casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
@@ -53,6 +55,8 @@ acc = acc[~acc['Speed Limit'].isin([0, 10])]
 # Create an hour column
 acc['Hour'] = acc['Time'].apply(lambda x: int(x.split(':')[0]))
 acc['Temp'] = acc['Temp'].round(0)# Set up the Dash instance. Big thanks to @jimmybow for the boilerplate code
+casualty_2 = casualty[casualty['AREFNO'].isin(acc['AREFNO'])].reset_index()
+merged = acc.merge(casualty_2, on="AREFNO", how="left")
 server = flask.Flask(__name__)
 server.secret_key = os.environ.get('secret_key', 'secret')
 app = dash.Dash(__name__, server=server)
@@ -642,70 +646,80 @@ def updateHeatmap(severity, weekdays, time, year,curve_graph_selected):
     #print("selected data",check)
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
     hours = [i for i in range(time[0], time[1] + 1)]
-    # Take a copy of the dataframe, filtering it and grouping
-    acc2 = DataFrame(acc[[
-        'Day', 'Hour', 'No. of Casualties in Acc.']][
-                         (acc['Accident Severity'].isin(severity)) &
-                         (acc['Day'].isin(weekdays)) &
-                         (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year])) &
-                         (acc['Accident Month'].isin(months))
-                         ].groupby(['Day', 'Hour']).sum()).reset_index()
 
-    # Apply text after grouping
-    def heatmapText(row):
-        return 'Day : {}<br>Time : {:02d}:00<br>Number of casualties: {}'.format(row['Day'],
-                                                                                 row['Hour'],
-                                                                                 row['No. of Casualties in Acc.'])
 
-    acc2['text'] = acc2.apply(heatmapText, axis=1)
+    cas2 = DataFrame(merged[[
+        'Road Surface', 'Light Conditions (Banded)', 'No. of Casualties in Acc.','age_by_decade','Total','Accident Severity']][
+                         (merged['Accident Severity'].isin(severity)) &
+                         (merged['Day_x'].isin(weekdays)) &
+                         (merged['Hour_x'].isin(hours)) &
+                         (merged['Accident Year_x'].isin([year])) &
+                         (merged['Accident Month_x'].isin(months))
+                         ]).groupby(['Total','Road Surface','Light Conditions (Banded)','age_by_decade','Accident Severity']).sum().reset_index()
+    print(cas2.head())
+    # cas_sl = cas2[cas2['Casualty Severity'] == 'Slight'].sample(frac=0.1)
+    # cas_se = cas2[cas2['Casualty Severity'] == 'Serious'].sample(frac=0.2)
+    # cas_fa = cas2[cas2['Casualty Severity'] == 'Fatal'].sample(frac=1)
+    # cas3 = cas_sl.append(cas_se, ignore_index=True)
+    # cas4 = cas3.append(cas_fa, ignore_index=True)
+    fig = px.sunburst(cas2, path=['Total','Accident Severity','Road Surface', 'Light Conditions (Banded)', 'age_by_decade'],\
+                      values='No. of Casualties in Acc.',color='No. of Casualties in Acc.',branchvalues="total",color_continuous_scale='blues',)
+    fig.update_layout(margin=dict(t=0, l=0, r=0, b=0))
 
-    # Pre-sort a list of days to feed into the heatmap
-    days = sorted(acc2['Day'].unique(), key=lambda k: DAYSORT[k])
-
-    # Create the z-values and text in a nested list format to match the shape of the heatmap
-    z = []
-    text = []
-    for d in days:
-        row = acc2['No. of Casualties in Acc.'][acc2['Day'] == d].values.tolist()
-        t = acc2['text'][acc2['Day'] == d].values.tolist()
-        z.append(row)
-        text.append(t)
-
-    # Plotly standard 'Electric' colourscale is great, but the maximum value is white, as is the
-    #  colour for missing values. I set the maximum to the penultimate maximum value,
-    #  then spread out the other. Plotly colourscales here: https://github.com/plotly/plotly.py/blob/master/plotly/colors.py
-
-    Electric = [
-        [0, 'rgb(0,0,0)'], [0.25, 'rgb(30,0,100)'],
-        [0.55, 'rgb(120,0,100)'], [0.8, 'rgb(160,90,0)'],
-        [1, 'rgb(230,200,0)']
-    ]
-
-    # Heatmap trace
-    traces = [{
-        'type': 'heatmap',
-        'x': hours,
-        'y': days,
-        'z': z,
-        'text': text,
-        'hoverinfo': 'text',
-        'colorscale': 'Viridis',
-    }]
-
-    fig = {'data': traces,
-           'layout': {
-               'autosize': True,
-               'automargin': True,
-               'title': 'Accidents by time and day',
-               'xaxis': {
-                   'ticktext': hours,  # for the tickvals and ticktext with one for each hour
-                   'tickvals': hours,
-                   'tickmode': 'array',
-               },
-               'transition': {
-                   'duration': 500}
-           }}
+    # # Apply text after grouping
+    # def heatmapText(row):
+    #     return 'Day : {}<br>Time : {:02d}:00<br>Number of casualties: {}'.format(row['Day'],
+    #                                                                              row['Hour'],
+    #                                                                              row['No. of Casualties in Acc.'])
+    #
+    # acc2['text'] = acc2.apply(heatmapText, axis=1)
+    #
+    # # Pre-sort a list of days to feed into the heatmap
+    # days = sorted(acc2['Day'].unique(), key=lambda k: DAYSORT[k])
+    #
+    # # Create the z-values and text in a nested list format to match the shape of the heatmap
+    # z = []
+    # text = []
+    # for d in days:
+    #     row = acc2['No. of Casualties in Acc.'][acc2['Day'] == d].values.tolist()
+    #     t = acc2['text'][acc2['Day'] == d].values.tolist()
+    #     z.append(row)
+    #     text.append(t)
+    #
+    # # Plotly standard 'Electric' colourscale is great, but the maximum value is white, as is the
+    # #  colour for missing values. I set the maximum to the penultimate maximum value,
+    # #  then spread out the other. Plotly colourscales here: https://github.com/plotly/plotly.py/blob/master/plotly/colors.py
+    #
+    # Electric = [
+    #     [0, 'rgb(0,0,0)'], [0.25, 'rgb(30,0,100)'],
+    #     [0.55, 'rgb(120,0,100)'], [0.8, 'rgb(160,90,0)'],
+    #     [1, 'rgb(230,200,0)']
+    # ]
+    #
+    # # Heatmap trace
+    # traces = [{
+    #     'type': 'heatmap',
+    #     'x': hours,
+    #     'y': days,
+    #     'z': z,
+    #     'text': text,
+    #     'hoverinfo': 'text',
+    #     'colorscale': 'Viridis',
+    # }]
+    #
+    # fig = {'data': traces,
+    #        'layout': {
+    #            'autosize': True,
+    #            'automargin': True,
+    #            'title': 'Accidents by time and day',
+    #            'xaxis': {
+    #                'ticktext': hours,  # for the tickvals and ticktext with one for each hour
+    #                'tickvals': hours,
+    #                'tickmode': 'array',
+    #            },
+    #            'transition': {
+    #                'duration': 500}
+    #        }}
     return fig
 
 
@@ -820,7 +834,7 @@ def updateMapBox(severity, weekdays, time, year, curve_graph_selected):
                Input('hourSlider', 'value'),
                Input('individual_graph','selectedData')])
 def make_year_graph(severity,weekdays,time,curve_graph_selected):
-    hours = [i for i in range(time[0], time[1] + 1)]
+
     if curve_graph_selected is None:
         months = ['January','February','March','April','May','June','July','August','September','October','November','December']
     else:

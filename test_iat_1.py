@@ -456,7 +456,7 @@ def display_click_data_weekday(selectedData):
     for i in range(0,no_of_pts):
         x_list.append(selectedData['points'][i]['x'])
         y_list.append(selectedData['points'][i]['y'])
-    return list(set(y_list)),[min(x_list),max(x_list)]   
+    return list(set(y_list)),[int(min(x_list)),int(max(x_list))]   
 
 ## APP INTERACTIVITY THROUGH CALLBACK FUNCTIONS TO UPDATE THE CHARTS ##
 #Callback for scatter plot "pie_graph"
@@ -513,7 +513,7 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
     figure = {
         'data': [
             go.Scatter(
-                x=acc2['Hour'].apply(lambda w: "{}{}".format(w,':00')),
+                x=acc2['Hour'],#.apply(lambda w: "{}{}".format(w,':00')),
                 y=sorted(acc2['Day'], key=lambda k: DAYSORT[k]),
                 #text=df[df['continent'] == i]['country'],
                 mode='markers',
@@ -815,11 +815,23 @@ def updateMapBox(severity, weekdays, time, year, curve_graph_selected):
 
 #make year-graph
 @app.callback(Output("year-graph", "figure"),
-              [Input('severityChecklist', 'value')])
-def make_year_graph(severity):
+              [Input('severityChecklist', 'value'),
+               Input('dayChecklist', 'value'),
+               Input('hourSlider', 'value'),
+               Input('individual_graph','selectedData')])
+def make_year_graph(severity,weekdays,time,curve_graph_selected):
+    hours = [i for i in range(time[0], time[1] + 1)]
+    if curve_graph_selected is None:
+        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    else:
+        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
+    hours = [i for i in range(time[0], time[1] + 1)]
     acc2 = DataFrame(acc[[
         'Accident Severity', 'Accident Year']][
-                         (acc['Accident Severity'].isin(severity))   
+                         (acc['Accident Severity'].isin(severity))&
+                         (acc['Day'].isin(weekdays)) &
+                         (acc['Hour'].isin(hours)) &
+                         (acc['Accident Month'].isin(months))   
                          ]).reset_index()
     figure={
                             'data': [

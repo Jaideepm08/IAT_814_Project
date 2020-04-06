@@ -52,8 +52,7 @@ casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
 acc = acc[~acc['Speed Limit'].isin([0, 10])]
 # Create an hour column
 acc['Hour'] = acc['Time'].apply(lambda x: int(x.split(':')[0]))
-
-# Set up the Dash instance. Big thanks to @jimmybow for the boilerplate code
+acc['Temp'] = acc['Temp'].round(0)# Set up the Dash instance. Big thanks to @jimmybow for the boilerplate code
 server = flask.Flask(__name__)
 server.secret_key = os.environ.get('secret_key', 'secret')
 app = dash.Dash(__name__, server=server)
@@ -313,22 +312,6 @@ app.layout = html.Div([
             [
                 html.Div(
                     [
-                        html.P(
-                            "Filter by incident date (or select range in histogram):",
-                            className="control_label", style={'font-weight': 'bold'}
-                        ),
-                        html.Br(),
-                        dcc.Slider(
-                            id="year_slider_weather",
-                            min=2010,
-                            max=2017,
-                            value=2010,
-                            included=False,
-                            marks={years: years for years in range(2010, 2018)},
-                            className="dcc_control",
-                            updatemode='mouseup'
-                        ),
-                        html.Br(),
                         html.P("Filter by Accident Severity:", className="control_label",
                                style={'font-weight': 'bold'}),
                         dcc.Checklist(  # Checklist for the three different severity values
@@ -343,6 +326,22 @@ app.layout = html.Div([
                             labelStyle={'display': 'inline-block'},
                             id="severityChecklist_weather"
 
+                        ),
+                        html.Br(),
+                        html.P(
+                            "Filter by incident date (or select range in histogram):",
+                            className="control_label", style={'font-weight': 'bold'}
+                        ),
+                        html.Br(),
+                        dcc.Slider(
+                            id="year_slider_weather",
+                            min=2010,
+                            max=2017,
+                            value=2010,
+                            included=False,
+                            marks={years: years for years in range(2010, 2018)},
+                            className="dcc_control",
+                            updatemode='mouseup'
                         ),
                         html.Br(),
                         html.P("   Filter by Month:", className="control_label", style={'font-weight': 'bold'}),
@@ -365,7 +364,8 @@ app.layout = html.Div([
                                    'September', 'October',
                                    'November', 'December'],
                             className="dcc_control",
-                        )
+                        ),
+                        dcc.Graph(id='temp_graph') 
                     ],
                     className="pretty_container four columns",
                     id="cross-filter-options_weather",
@@ -833,6 +833,32 @@ def make_year_graph(severity):
                                 'title': 'Filter by Years',
                                 'clickmode': 'event+select',
                                 'xaxis':{'title': 'Year','dtick' :1},
+                                'bargap':0.5,
+                                'height':300
+                            }
+                        }
+    return figure
+
+#make temp_graph
+@app.callback(Output("temp_graph", "figure"),
+              [Input('severityChecklist_weather', 'value')])
+def make_temp_graph(severity):
+    acc2 = DataFrame(acc[[
+        'Accident Severity', 'Temp']][
+                         (acc['Accident Severity'].isin(severity))   
+                         ]).reset_index()
+    figure={
+                            'data': [
+                                {'x': acc2.groupby(["Temp"]).size().reset_index(name='counts')['Temp'], 
+                                 'y': acc2.groupby(["Temp"]).size().reset_index(name='counts')['counts'], 
+                                 'type': 'line',
+                                 #'marker': {'color': '#99cfe0','width': 0.1}
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Filter by Temperature',
+                                'clickmode': 'event+select',
+                                'xaxis':{'title': 'Temperature(C)','dtick' :5,'range':[-5,40]},
                                 'bargap':0.5,
                                 'height':300
                             }

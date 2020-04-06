@@ -513,7 +513,7 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
     figure = {
         'data': [
             go.Scatter(
-                x=acc2['Hour'].apply(lambda w: "{}{}".format(w,':00')),
+                x=acc2['Hour'],#.apply(lambda w: "{}{}".format(w,':00')),
                 y=sorted(acc2['Day'], key=lambda k: DAYSORT[k]),
                 #text=df[df['continent'] == i]['country'],
                 mode='markers',

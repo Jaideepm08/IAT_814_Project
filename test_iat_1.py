@@ -6,7 +6,7 @@ import flask
 import pandas as pd
 import plotly.graph_objs as go
 import plotly.express as px
-
+from random import randint
 
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
@@ -437,7 +437,27 @@ app.layout = html.Div([
                
                
                ]),
-       dcc.Tab(label='Road Conditions', children=[]),
+       dcc.Tab(label='Road Conditions', children=[
+               html.Div([   html.P("Filter by Accident Severity:", className="control_label",
+                               style={'font-weight': 'bold'}),
+                           dcc.Checklist(  # Checklist for the three different severity values
+                            options=[
+                                {'label': sev, 'value': sev} for sev in acc['Accident Severity'].unique()
+                            ],
+                            value=[sev for sev in acc['Accident Severity'].unique()],
+                            inputStyle={
+                                        'background': 'red'
+                                        },
+                            className="check",
+                            #labelStyle={'display': 'inline-block'},
+                            id="severityChecklist_road"
+                        )],
+                        className="pretty_container three columns"
+                        ),
+               html.Div([dcc.Graph(id='road_graph')],
+                    className="pretty_container eight columns"
+                    )
+        ]),
        dcc.Tab(label='Vehicle Details', children=[]),
     ]),
         
@@ -1034,6 +1054,45 @@ def make_snow_graph(severity,selected_temp,selected_precs,clicked_bar):
                                 'clickmode': 'event+select',
                                 'xaxis':{'title': 'Snowfall(cm)','dtick' :1},	
                                 'yaxis':{'range':[0,310]}
+                            }
+                        }
+    return figure
+
+#make road_graph
+#make temp_graph
+@app.callback(Output("road_graph", "figure"),
+              [Input('severityChecklist_road', 'value')])
+def make_road_graph(severity):
+    acc2 = DataFrame(acc[[
+        'Accident Severity', 'Road Type','Road Surface']][
+                         (acc['Accident Severity'].isin(severity))   
+                         ]).reset_index()
+    dd = acc2.groupby(['Road Type','Road Surface']).size().reset_index(name='counts')
+    dd['Road Surface'] = dd['Road Surface'].str.replace(' ','-')
+    dd['Road Surface'] = dd['Road Surface'].str.split('-').str[1]
+    dd['Road Surface'] = dd['Road Surface'].str.replace('(S/R)','Unknown')
+    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 30000 else randint(2000,8000))
+    dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
+    figure={
+                            'data': [
+                                    go.Scatter(
+                                    x=dd['Road Surface'], 
+                                    y=dd['Road Type'],#.apply(lambda w: "{}{}".format(w,':00')),
+                                    mode='markers',
+                                    opacity=0.6,
+                                    marker_size=dd['counts'],
+                                    marker={
+                                        'line':{'width':2,'color':'DarkSlateGrey'},
+                                        'sizeref' : (2.0* max(dd['counts'])/(12** 2))
+                                    },
+                    
+                                )                             
+                            ],
+                            'layout': {
+                                'title': 'Accidents with respect to Road Types and Surfaces',
+                                'clickmode': 'event+select',
+                                'transition': {'duration': 500}
+                                #'xaxis':{'title': 'Temperature(C)','dtick' :5,'range':[-5,40]},
                             }
                         }
     return figure

@@ -673,7 +673,7 @@ def updateHeatmap(severity, weekdays, time, year,curve_graph_selected):
     # cas4 = cas3.append(cas_fa, ignore_index=True)
     fig = px.sunburst(cas2, path=['Total','Accident Severity','Road Surface', 'Light Conditions (Banded)', 'age_by_decade'],\
                       values='No. of Casualties in Acc.',color='No. of Casualties in Acc.',branchvalues="total",color_continuous_scale='blues',)
-    fig.update_layout(margin=dict(t=0, l=0, r=0, b=0))
+    fig.update_layout(margin=dict(t=0, l=0, r=0, b=0),transition = {'duration': 500})
 
     # # Apply text after grouping
     # def heatmapText(row):

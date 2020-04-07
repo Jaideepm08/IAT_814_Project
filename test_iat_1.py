@@ -46,8 +46,9 @@ FONT_FAMILY = "Arial"
 acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv").dropna(how='any', axis=0)
 casualty = read_csv("data/casualty_df_age_grp.csv").dropna(how='any', axis=0)
 veh = read_csv("data/Vehicle_10-18.csv")
-# acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
-# casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
+# acc = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/Attendant_v2_fixed.csv").dropna(how='any', axis=0)
+# casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df_age_grp.csv").dropna(how='any', axis=0)
+# veh = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/Vehicle_10-18.csv")
 
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
 
@@ -59,6 +60,7 @@ acc['Hour'] = acc['Time'].apply(lambda x: int(x.split(':')[0]))
 acc['Temp'] = acc['Temp'].round(0)# Set up the Dash instance. Big thanks to @jimmybow for the boilerplate code
 casualty_2 = casualty[casualty['AREFNO'].isin(acc['AREFNO'])].reset_index()
 merged = acc.merge(casualty_2, on="AREFNO", how="left")
+#print(merged.columns)
 server = flask.Flask(__name__)
 server.secret_key = os.environ.get('secret_key', 'secret')
 app = dash.Dash(__name__, server=server)
@@ -533,26 +535,43 @@ def display_click_data_weekday(selectedData):
                Input('dayChecklist', 'value'),
                Input('hourSlider', 'value'),
                Input('individual_graph','selectedData'),
-               Input('heatmap','selectedData'),
+               Input('map','selectedData'),
                ])
-def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_selected):
+def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selected):
+    hours = [i for i in range(time[0], time[1] + 1)]
+
     if curve_graph_selected is None:
         months = ['January','February','March','April','May','June','July','August','September','October','November','December']
     else:
         months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
 
-    #print("selected data",check)
+    #print("map selected data",map_selected)
+
+    if map_selected is None:
+        acc2 = DataFrame(acc[[
+            'Day', 'Hour', 'No. of Casualties in Acc.']][
+                             (acc['Accident Severity'].isin(severity)) &
+                             (acc['Day'].isin(weekdays)) &
+                             (acc['Hour'].isin(hours)) &
+                             (acc['Accident Year'].isin([year])) &
+                             (acc['Accident Month'].isin(months))
+                             ].groupby(['Day', 'Hour']).sum()).reset_index()
+    else:
+        location = [str(mnts["text"]) for mnts in map_selected["points"]]
+        acc2 = DataFrame(acc[[
+            'Day', 'Hour', 'No. of Casualties in Acc.']][
+                             (acc['Accident Severity'].isin(severity)) &
+                             (acc['Day'].isin(weekdays)) &
+                             (acc['Hour'].isin(hours)) &
+                             (acc['Accident Year'].isin([year])) &
+                             (acc['Accident Month'].isin(months)) &
+                             (acc['Location'].isin(location))
+                             ].groupby(['Day', 'Hour']).sum()).reset_index()
+        #print(acc2.head())
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
-    hours = [i for i in range(time[0], time[1] + 1)]
+
     # Take a copy of the dataframe, filtering it and grouping
-    acc2 = DataFrame(acc[[
-        'Day', 'Hour', 'No. of Casualties in Acc.']][
-                         (acc['Accident Severity'].isin(severity)) &
-                         (acc['Day'].isin(weekdays)) &
-                         (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year])) &
-                         (acc['Accident Month'].isin(months))
-                         ].groupby(['Day', 'Hour']).sum()).reset_index()
+
 
     # Apply text after grouping
     def heatmapText(row):
@@ -560,22 +579,6 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
                                                                                  row['Hour'],
                                                                                  row['No. of Casualties in Acc.'])
 
-    # acc2['text'] = acc2.apply(heatmapText, axis=1)
-
-    # Pre-sort a list of days to feed into the heatmap
-    days = sorted(acc2['Day'].unique(), key=lambda k: DAYSORT[k])
-
-
-
-    # Create the z-values and text in a nested list format to match the shape of the heatmap
-    # z = []
-    # text = []
-    # for d in days:
-    #     row = acc2['No. of Casualties in Acc.'][acc2['Day'] == d].values.tolist()
-    #     t = acc2['text'][acc2['Day'] == d].values.tolist()
-    #     z.append(row)
-    #     text.append(t)
-    # print(hours)
 
     figure = {
         'data': [
@@ -619,27 +622,43 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, heat_map_
      Input(component_id='dayChecklist', component_property='value'),
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
-     Input('individual_graph','selectedData')
+     Input('individual_graph','selectedData'),
+     Input('map','selectedData')
      ]
 )
-def updateBarChart(severity, weekdays, time, year, curve_graph_selected):
+def updateBarChart(severity, weekdays, time, year, curve_graph_selected, map_selected):
+    # The rangeslider is selects inclusively, but a python list stops before the last number in a range
+    hours = [i for i in range(time[0], time[1] + 1)]
+
     if curve_graph_selected is None:
         months = ['January','February','March','April','May','June','July','August','September','October','November','December']
     else:
         months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
-    # The rangeslider is selects inclusively, but a python list stops before the last number in a range
-    hours = [i for i in range(time[0], time[1] + 1)]
+
 
     # Create a copy of the dataframe by filtering according to the values passed in.
     # Important to create a copy rather than affect the global object.
-    acc2 = DataFrame(acc[[
-        'Accident Severity', 'Speed Limit', 'No. of Casualties in Acc.']][
-                         (acc['Accident Severity'].isin(severity)) &
-                         (acc['Day'].isin(weekdays)) &
-                         (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year])) &
-                         (acc['Accident Month'].isin(months))
-                         ].groupby(['Accident Severity', 'Speed Limit']).sum()).reset_index()
+    if map_selected is None:
+        acc2 = DataFrame(acc[[
+            'Accident Severity', 'Speed Limit', 'No. of Casualties in Acc.']][
+                             (acc['Accident Severity'].isin(severity)) &
+                             (acc['Day'].isin(weekdays)) &
+                             (acc['Hour'].isin(hours)) &
+                             (acc['Accident Year'].isin([year])) &
+                             (acc['Accident Month'].isin(months))
+                             ].groupby(['Accident Severity', 'Speed Limit']).sum()).reset_index()
+    else:
+        location = [str(mnts["text"]) for mnts in map_selected["points"]]
+        acc2 = DataFrame(acc[[
+            'Accident Severity', 'Speed Limit', 'No. of Casualties in Acc.']][
+                             (acc['Accident Severity'].isin(severity)) &
+                             (acc['Day'].isin(weekdays)) &
+                             (acc['Hour'].isin(hours)) &
+                             (acc['Accident Year'].isin([year])) &
+                             (acc['Accident Month'].isin(months)) &
+                             (acc['Location'].isin(location))
+                             ].groupby(['Accident Severity', 'Speed Limit']).sum()).reset_index()
+
 
     # Create the field for the hovertext. Doing this after grouping, rather than
     #  immediately after loading the df. Should be quicker this way.
@@ -698,27 +717,45 @@ def updateBarChart(severity, weekdays, time, year, curve_graph_selected):
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
      Input('individual_graph','selectedData'),
+     Input('map','selectedData'),
      ]
 )
-def updateHeatmap(severity, weekdays, time, year,curve_graph_selected):
+def updateHeatmap(severity, weekdays, time, year,curve_graph_selected, map_selected):
+    # The rangeslider is selects inclusively, but a python list stops before the last number in a range
+    hours = [i for i in range(time[0], time[1] + 1)]
+
     if curve_graph_selected is None:
         months = ['January','February','March','April','May','June','July','August','September','October','November','December']
     else:
         months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
 
     #print("selected data",check)
-    # The rangeslider is selects inclusively, but a python list stops before the last number in a range
-    hours = [i for i in range(time[0], time[1] + 1)]
 
 
-    cas2 = DataFrame(merged[[
-        'Road Surface', 'Light Conditions (Banded)', 'No. of Casualties in Acc.','age_by_decade','Total','Accident Severity']][
-                         (merged['Accident Severity'].isin(severity)) &
-                         (merged['Day_x'].isin(weekdays)) &
-                         (merged['Hour_x'].isin(hours)) &
-                         (merged['Accident Year_x'].isin([year])) &
-                         (merged['Accident Month_x'].isin(months))
-                         ]).groupby(['Total','Road Surface','Light Conditions (Banded)','age_by_decade','Accident Severity']).sum().reset_index()
+    if map_selected is None:
+        cas2 = DataFrame(merged[[
+            'Road Surface', 'Light Conditions (Banded)', 'No. of Casualties in Acc.','age_by_decade','Total','Accident Severity']][
+                             (merged['Accident Severity'].isin(severity)) &
+                             (merged['Day_x'].isin(weekdays)) &
+                             (merged['Hour_x'].isin(hours)) &
+                             (merged['Accident Year_x'].isin([year])) &
+                             (merged['Accident Month_x'].isin(months))
+                             ]).groupby(['Total','Road Surface','Light Conditions (Banded)','age_by_decade','Accident Severity']).sum().reset_index()
+    else:
+        location = [str(mnts["text"]) for mnts in map_selected["points"]]
+        cas2 = DataFrame(merged[[
+            'Road Surface', 'Light Conditions (Banded)', 'No. of Casualties in Acc.', 'age_by_decade', 'Total',
+            'Accident Severity']][
+                             (merged['Accident Severity'].isin(severity)) &
+                             (merged['Day_x'].isin(weekdays)) &
+                             (merged['Hour_x'].isin(hours)) &
+                             (merged['Accident Year_x'].isin([year])) &
+                             (merged['Accident Month_x'].isin(months)) &
+                             (merged['Location'].isin(location))
+                             ]).groupby(['Total', 'Road Surface', 'Light Conditions (Banded)', 'age_by_decade',
+                                         'Accident Severity']).sum().reset_index()
+
+
     # cas_sl = cas2[cas2['Casualty Severity'] == 'Slight'].sample(frac=0.1)
     # cas_se = cas2[cas2['Casualty Severity'] == 'Serious'].sample(frac=0.2)
     # cas_fa = cas2[cas2['Casualty Severity'] == 'Fatal'].sample(frac=1)
@@ -894,21 +931,36 @@ def updateMapBox(severity, weekdays, time, year, curve_graph_selected):
               [Input('severityChecklist', 'value'),
                Input('dayChecklist', 'value'),
                Input('hourSlider', 'value'),
-               Input('individual_graph','selectedData')])
-def make_year_graph(severity,weekdays,time,curve_graph_selected):
+               Input('individual_graph','selectedData'),
+               Input('map','selectedData'),
+               ])
+def make_year_graph(severity,weekdays,time,curve_graph_selected, map_selected):
+    hours = [i for i in range(time[0], time[1] + 1)]
 
     if curve_graph_selected is None:
         months = ['January','February','March','April','May','June','July','August','September','October','November','December']
     else:
         months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
-    hours = [i for i in range(time[0], time[1] + 1)]
-    acc2 = DataFrame(acc[[
-        'Accident Severity', 'Accident Year']][
-                         (acc['Accident Severity'].isin(severity))&
-                         (acc['Day'].isin(weekdays)) &
-                         (acc['Hour'].isin(hours)) &
-                         (acc['Accident Month'].isin(months))   
-                         ]).reset_index()
+
+    if map_selected is None:
+        acc2 = DataFrame(acc[[
+            'Accident Severity', 'Accident Year']][
+                             (acc['Accident Severity'].isin(severity))&
+                             (acc['Day'].isin(weekdays)) &
+                             (acc['Hour'].isin(hours)) &
+                             (acc['Accident Month'].isin(months))
+                             ]).reset_index()
+    else:
+        location = [str(mnts["text"]) for mnts in map_selected["points"]]
+        acc2 = DataFrame(acc[[
+            'Accident Severity', 'Accident Year']][
+                             (acc['Accident Severity'].isin(severity)) &
+                             (acc['Day'].isin(weekdays)) &
+                             (acc['Hour'].isin(hours)) &
+                             (acc['Accident Month'].isin(months)) &
+                             (acc['Location'].isin(location))
+                             ]).reset_index()
+
     figure={
                             'data': [
                                 {'x': acc2.groupby(["Accident Year"]).size().reset_index(name='counts')['Accident Year'], 
@@ -1310,19 +1362,32 @@ def make_vehicle_graph1(severity,clickData,selected_mans):
                Input('severityChecklist', 'value'),
                Input('dayChecklist', 'value'),
                Input('hourSlider', 'value'),
+               Input('map','selectedData'),
                ])
-def make_individual_figure(year, severity, weekdays, time):
+def make_individual_figure(year, severity, weekdays, time, map_selected):
 
     hours = [i for i in range(time[0], time[1] + 1)]
     # Create a copy of the dataframe by filtering according to the values passed in.
     # Important to create a copy rather than affect the global object.
-    acc2 = DataFrame(acc[[
-        'Accident Severity', 'Location', 'No. of Casualties in Acc.','Accident Month']][
-                         (acc['Accident Severity'].isin(severity)) &
-                         (acc['Day'].isin(weekdays)) &
-                         (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year]))
-                         ]).reset_index()
+    if map_selected is None:
+        acc2 = DataFrame(acc[[
+            'Accident Severity', 'Location', 'No. of Casualties in Acc.','Accident Month']][
+                             (acc['Accident Severity'].isin(severity)) &
+                             (acc['Day'].isin(weekdays)) &
+                             (acc['Hour'].isin(hours)) &
+                             (acc['Accident Year'].isin([year]))
+                             ]).reset_index()
+    else:
+        location = [str(mnts["text"]) for mnts in map_selected["points"]]
+        acc2 = DataFrame(acc[[
+            'Accident Severity', 'Location', 'No. of Casualties in Acc.', 'Accident Month']][
+                             (acc['Accident Severity'].isin(severity)) &
+                             (acc['Day'].isin(weekdays)) &
+                             (acc['Hour'].isin(hours)) &
+                             (acc['Accident Year'].isin([year])) &
+                             (acc['Location'].isin(location))
+                             ]).reset_index()
+
     # chosen = [point["customdata"] for point in main_graph_hover["points"]]
     # index, gas, oil, water = produce_individual(chosen[0])
     grouped = acc2.groupby(["Accident Month","Accident Severity"]).size().reset_index(name='counts')
@@ -1406,38 +1471,54 @@ def make_individual_figure(year, severity, weekdays, time):
      Input('dayChecklist', 'value'),
      Input('hourSlider', 'value'),
      Input('individual_graph','selectedData'),
+     Input('map','selectedData')
      ]
 )
-def update_text(year,severity, weekdays, time, curve_graph_selected):
+def update_text(year,severity, weekdays, time, curve_graph_selected, map_selected):
+    hours = [i for i in range(time[0], time[1] + 1)]
+
     if curve_graph_selected is None:
         months = ['January','February','March','April','May','June','July','August','September','October','November','December']
     else:
         months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
-    hours = [i for i in range(time[0], time[1] + 1)]
+
 
     # Create a copy of the dataframe by filtering according to the values passed in.
     # Important to create a copy rather than affect the global object.
-    acc2 = DataFrame(acc[[
-        'Accident Severity', 'Location', 'No. of Casualties in Acc.']][
-                         (acc['Accident Severity'].isin(severity)) &
-                         (acc['Day'].isin(weekdays)) &
-                         (acc['Hour'].isin(hours)) &
-                         (acc['Accident Year'].isin([year])) &
-                         (acc['Accident Month'].isin(months))
-                         ]).reset_index()
-    cas = DataFrame(casualty[[
-        'Casualty Severity', 'Casualty Age (Banded)','Casualty Class']][
-                         (casualty['Casualty Severity'].isin(severity)) &
-                         (casualty['Day'].isin(weekdays)) &
-                         (casualty['Hour'].isin(hours)) &
-                         (casualty['Accident Year'].isin([year])) &
-                         (casualty['Accident Month'].isin(months))
-                         ]).reset_index()
+    if map_selected is None:
+        acc2 = DataFrame(merged[[
+            'Accident Severity', 'Location', 'No. of Casualties in Acc.','age_by_decade','Casualty Class']][
+                             (merged['Accident Severity'].isin(severity)) &
+                             (merged['Day_x'].isin(weekdays)) &
+                             (merged['Hour_x'].isin(hours)) &
+                             (merged['Accident Year_x'].isin([year])) &
+                             (merged['Accident Month_x'].isin(months))
+                             ]).reset_index()
+        # cas = DataFrame(casualty[[
+        #     'Casualty Severity', 'age_by_decade','Casualty Class']][
+        #                      (casualty['Casualty Severity'].isin(severity)) &
+        #                      (casualty['Day'].isin(weekdays)) &
+        #                      (casualty['Hour'].isin(hours)) &
+        #                      (casualty['Accident Year'].isin([year])) &
+        #                      (casualty['Accident Month'].isin(months))
+        #                      ]).reset_index()
+    else:
+        location = [str(mnts["text"]) for mnts in map_selected["points"]]
+        acc2 = DataFrame(merged[[
+            'Accident Severity', 'Location', 'No. of Casualties in Acc.', 'age_by_decade', 'Casualty Class']][
+                             (merged['Accident Severity'].isin(severity)) &
+                             (merged['Day_x'].isin(weekdays)) &
+                             (merged['Hour_x'].isin(hours)) &
+                             (merged['Accident Year_x'].isin([year])) &
+                             (merged['Accident Month_x'].isin(months)) &
+                             (merged['Location'].isin(location))
+                             ]).reset_index()
 
-    vul_age_grp = cas.groupby("Casualty Age (Banded)").size().reset_index(name='counts')
+
+    vul_age_grp = acc2.groupby("age_by_decade").size().reset_index(name='counts')
     vul_age_grp_1 = vul_age_grp.sort_values(by='counts', ascending=False).head(1)
 
-    cc = cas.groupby("Casualty Class").size().reset_index(name='counts')
+    cc = acc2.groupby("Casualty Class").size().reset_index(name='counts')
     ccc = cc.sort_values(by='counts', ascending=False).head(1)
 
     acc2['cross_street'] = acc2['Location'].str.split(' J/W ',expand=True)[0]
@@ -1446,7 +1527,7 @@ def update_text(year,severity, weekdays, time, curve_graph_selected):
     most_crashes_on_srt = most_crashes_on.sort_values(by='counts', ascending=False)
     most_crashes_on_srt_2 = most_crashes_on_srt.head(1)
 
-    return f'{acc2.count()[0]:,}', f'{int(casualties):,}', most_crashes_on_srt_2["cross_street"],vul_age_grp_1['Casualty Age (Banded)'],ccc["Casualty Class"]
+    return f'{acc2.count()[0]:,}', f'{int(casualties):,}', most_crashes_on_srt_2["cross_street"],vul_age_grp_1['age_by_decade'],ccc["Casualty Class"]
 
 #Weather tab - KPIs
 @app.callback(

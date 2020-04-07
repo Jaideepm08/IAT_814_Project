@@ -45,6 +45,7 @@ FONT_FAMILY = "Arial"
 
 acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv").dropna(how='any', axis=0)
 casualty = read_csv("data/casualty_df_age_grp.csv").dropna(how='any', axis=0)
+veh = read_csv("data/Vehicle_10-18.csv")
 # acc = read_csv("data/Attendant_10-17_lat_lon_sample.csv", index_col=0).dropna(how='any', axis=0)
 # casualty = read_csv("data/casualty_df.csv", index_col=0).dropna(how='any', axis=0)
 
@@ -456,9 +457,42 @@ app.layout = html.Div([
                         ),
                html.Div([dcc.Graph(id='road_graph')],
                     className="pretty_container eight columns"
+                    ),
+            html.Div([dcc.Graph(id='road_graph2')],
+                    className="pretty_container five columns"
+                    ),
+            html.Div([dcc.Graph(id='road_graph3')],
+                    className="pretty_container five columns"
                     )
         ]),
-       dcc.Tab(label='Vehicle Details', children=[]),
+       dcc.Tab(label='Vehicle Details', children=[
+               html.Div([   html.P("Filter by Accident Severity:", className="control_label",
+                               style={'font-weight': 'bold'}),
+                           dcc.Checklist(  # Checklist for the three different severity values
+                            options=[
+                                {'label': sev, 'value': sev} for sev in veh['Accident Severity'].unique()
+                            ],
+                            value=[sev for sev in veh['Accident Severity'].unique()],
+                            inputStyle={
+                                        'background': 'red'
+                                        },
+                            className="check",
+                            #labelStyle={'display': 'inline-block'},
+                            id="severityChecklist_vehicle"
+                        )],
+                        className="pretty_container three columns"
+                        ),
+               html.Div([dcc.Graph(id='vehicle_graph1')],
+                    className="pretty_container eight columns"
+                    ),
+            html.Div([dcc.Graph(id='vehicle_graph2')],
+                    className="pretty_container five columns"
+                    ),
+            html.Div([dcc.Graph(id='vehicle_graph3')],
+                    className="pretty_container five columns"
+                    )
+               
+               ]),
     ]),
         
     ],
@@ -1059,7 +1093,6 @@ def make_snow_graph(severity,selected_temp,selected_precs,clicked_bar):
     return figure
 
 #make road_graph
-#make temp_graph
 @app.callback(Output("road_graph", "figure"),
               [Input('severityChecklist_road', 'value')])
 def make_road_graph(severity):
@@ -1096,6 +1129,180 @@ def make_road_graph(severity):
                             }
                         }
     return figure
+
+#make road_graph2
+@app.callback(Output("road_graph2", "figure"),
+              [Input('severityChecklist_road', 'value')])
+def make_road_graph2(severity):
+    acc2 = DataFrame(acc[[
+        'Accident Severity', 'Special Conditions']][
+                         (acc['Accident Severity'].isin(severity))   
+                         ]).reset_index()
+    dd = acc2.groupby(['Special Conditions']).size().reset_index(name='counts')
+    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 30000 else randint(2000,8000))
+    dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
+    figure={
+                            'data': [
+                                {
+                                 'mode':"lines+markers",
+                                 'x': dd['Special Conditions'], 
+                                 'y': dd['counts'], 
+                                 'type': 'scatter',
+                                 'marker': {'color': '#ee9e07'}
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Filter by Special Conditions',
+                                'clickmode': 'event+select',
+                            }
+                        }
+    return figure
+
+#make road_graph3
+@app.callback(Output("road_graph3", "figure"),
+              [Input('severityChecklist_weather', 'value'),
+               Input('road_graph2','selectedData')])
+def make_road_graph3(severity,selected_conditions):
+    if selected_conditions is None:
+        tmps = [temp for temp in acc['Special Conditions'].unique()]
+    else:
+        tmps = [str(t["x"]) for t in selected_conditions["points"]]
+    acc2 = DataFrame(acc[[
+        'Accident Severity', 'Special Conditions','C/W Hazard']][
+                         (acc['Accident Severity'].isin(severity))&
+                          acc['Special Conditions'].isin(tmps)
+                         ]).reset_index()
+
+    
+    dd = acc2.groupby(['C/W Hazard']).size().reset_index(name='counts')
+    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 30000 else randint(2000,8000))
+    dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))    #precc = precc[(precc['Precipitation'] != 0)]
+    figure={
+                            'data': [
+                                {
+                                 'mode':"markers",
+                                 'x': dd['C/W Hazard'], 
+                                 'y': dd['counts'], 
+                                 'type': 'scatter',
+                                 'marker':dict(	
+                                    color='rgba(135, 206, 250, 0.8)',	
+                                    size=22,	
+                                    line=dict(	
+                                        color='MediumPurple',	
+                                        width=2.8	
+                                    )	
+                                )
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Filter by Hazards on Road',
+                                'clickmode': 'event+select',
+                            }
+                        }
+    return figure
+
+
+#make vehicle_graph2
+@app.callback(Output("vehicle_graph2", "figure"),
+              [Input('severityChecklist_vehicle', 'value')])
+def make_veh_graph2(severity):
+    veh2 = DataFrame(veh[[
+        'Accident Severity', 'Vehicle Type']][
+                         (veh['Accident Severity'].isin(severity))   
+                         ]).reset_index()
+    dd = veh2.groupby(['Vehicle Type']).size().reset_index(name='counts')
+    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(1000,10000))
+    dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
+    figure={
+                            'data': [
+                                {
+                                 'x': dd['Vehicle Type'], 
+                                 'y': dd['counts'], 
+                                 'type': 'bar',
+                                 'marker': {'color': '#ee9e07'}
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Filter by Type and Power of vehicle',
+                                'clickmode': 'event+select',
+                            }
+                        }
+    return figure
+
+#make vehicle_graph3
+@app.callback(Output("vehicle_graph3", "figure"),
+              [Input('severityChecklist_vehicle', 'value'),
+               Input('vehicle_graph2','clickData')])
+def make_veh_graph3(severity,clickData):
+    if clickData is None:
+        typ = veh['Vehicle Type'].unique()[0]
+    else:
+        typ = clickData['points'][0]['x']
+        
+    veh2 = DataFrame(veh[[
+        'Accident Severity', 'Vehicle Type','Vehicle Manoeuvres']][
+                         (veh['Accident Severity'].isin(severity))&
+                          veh['Vehicle Type'].isin([typ])
+                         ]).reset_index()
+
+    
+    dd = veh2.groupby(['Vehicle Manoeuvres']).size().reset_index(name='counts')
+    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(1000,10000))
+    dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))    #precc = precc[(precc['Precipitation'] != 0)]
+    figure={
+                            'data': [
+                                {
+                                 'mode':"lines+markers",
+                                 'x': dd['Vehicle Manoeuvres'], 
+                                 'y': dd['counts'], 
+                                 'type': 'scatter'
+                                 }                                
+                            ],
+                            'layout': {
+                                'title': 'Filter by Vehicle Manoeuvres',
+                                'clickmode': 'event+select',
+                            }
+                        }
+    return figure
+
+#make vehicle_graph1
+@app.callback(Output("vehicle_graph1", "figure"),
+              [Input('severityChecklist_vehicle', 'value'),
+               Input('vehicle_graph2','clickData'),
+               Input('vehicle_graph3','selectedData')
+               ])
+def make_vehicle_graph1(severity,clickData,selected_mans):
+    if clickData is None:
+        typ = veh['Vehicle Type'].unique()
+    else:
+        typ = clickData['points'][0]['x']
+    if selected_mans is None:
+        mans = [temp for temp in veh['Vehicle Manoeuvres'].unique()]
+    else:
+        mans = [str(t["x"]) for t in selected_mans["points"]]    
+    veh2 = DataFrame(veh[[
+        'Accident Severity', 'Vehicle Type','Vehicle Manoeuvres','Vehicle Type (Banded)']]).reset_index()
+    print(veh2)                           
+    dd = veh2.groupby(['Vehicle Type (Banded)']).size().reset_index(name='counts')
+    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(1000,10000))
+    dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))  
+    print(dd)
+    figure={	
+                            'data': [	
+                                {'y': dd['Vehicle Type (Banded)'], 	
+                                 'x': dd['counts'], 	
+                                 'type': 'bar',	
+                                 }                                	
+                            ],	
+                            'layout': {	
+                                'title': 'Type of Vehicle',	
+                                'clickmode': 'event+select',	
+                            }	
+                        }
+
+    return figure
+
+
 
 # Main graph -> individual graph
 @app.callback(Output("individual_graph", "figure"),

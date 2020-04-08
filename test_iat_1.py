@@ -993,11 +993,36 @@ def make_year_graph(severity,weekdays,time,curve_graph_selected, map_selected):
 
 #make temp_graph
 @app.callback(Output("temp_graph", "figure"),
-              [Input('severityChecklist_weather', 'value')])
-def make_temp_graph(severity):
+              [Input('severityChecklist_weather', 'value'),
+               Input('weather-histogram', 'selectedData'),
+               Input('weather-histogram', 'clickData'),
+               Input('snow_graph','selectedData'),
+               Input('precipitation_graph', 'selectedData'),
+               ])
+def make_temp_graph(severity, weather_selected, weather_clicked, snow_selected, precipitation_selected):
+    print('clickData',weather_clicked)
+    if snow_selected:
+        snow = [str(t["x"]) for t in snow_selected["points"]]
+    else:
+        snow = [sn for sn in acc['Snowfall Amount']]
+
+    if precipitation_selected:
+        preci = [str(t["x"]) for t in precipitation_selected["points"]]
+    else:
+        preci = [pr for pr in acc['Precipitation']]
+
+    if weather_selected:
+        weather = [str(t["y"]) for t in weather_selected["points"]]
+    elif weather_clicked:
+        weather = [str(t["y"]) for t in weather_clicked["points"]]
+    else:
+        weather = [temp for temp in acc['Weather'].unique()]
     acc2 = DataFrame(acc[[
         'Accident Severity', 'Temp']][
-                         (acc['Accident Severity'].isin(severity))   
+                         (acc['Accident Severity'].isin(severity)) &
+                         (acc['Weather'].isin(weather)) &
+                         (acc['Snowfall Amount'].isin(snow)) &
+                         (acc['Precipitation'].isin(preci))
                          ]).reset_index()
                    
                    
@@ -1023,20 +1048,40 @@ def make_temp_graph(severity):
 #make precipitation_graph
 @app.callback(Output("precipitation_graph", "figure"),
               [Input('severityChecklist_weather', 'value'),
-               Input('temp_graph','selectedData')])
-def make_precipitation_graph(severity,selected_temp):
+               Input('temp_graph','selectedData'),
+               Input('weather-histogram', 'selectedData'),
+               Input('weather-histogram', 'clickData'),
+               Input('snow_graph','selectedData')
+               ])
+def make_precipitation_graph(severity,selected_temp, weather_selected, weather_clicked, snow_selected):
+    #print("weather_selected",weather_selected)
+    if snow_selected:
+        snow = [str(t["x"]) for t in snow_selected["points"]]
+    else:
+        snow = [sn for sn in acc['Snowfall Amount']]
+
     if selected_temp is None:
         tmps = [temp for temp in acc['Temp'].unique()]
     else:
         tmps = [str(t["x"]) for t in selected_temp["points"]]
+
+    if weather_selected:
+        weather = [str(t["y"]) for t in weather_selected["points"]]
+    elif weather_clicked:
+        weather = [str(t["y"]) for t in weather_clicked["points"]]
+    else:
+        weather = [temp for temp in acc['Weather'].unique()]
     acc2 = DataFrame(acc[[
         'Accident Severity', 'Temp','Precipitation']][
                          (acc['Accident Severity'].isin(severity))&
-                          acc['Temp'].isin(tmps)
+                         (acc['Temp'].isin(tmps)) &
+                         (acc['Weather'].isin(weather)) &
+                         (acc['Snowfall Amount'].isin(snow))
                          ]).reset_index()
                    
     dd = acc2.groupby(['Precipitation']).size().reset_index(name='counts')
-    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 1000 else randint(100,1000))
+    dd['counts'] = dd['counts'].clip(0,500)
+    #dd['counts'] = dd['counts'].apply(lambda x: x if x <= 1000 else randint(100,1000))
     #dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
     #precc = acc2.groupby(["Precipitation"]).size().reset_index(name='counts')
     #precc = precc[(precc['Precipitation'] != 0)]
@@ -1126,9 +1171,10 @@ def make_weather_histogram(severity,selected_temp,selected_precs,selected_snowf)
               [Input('severityChecklist_weather', 'value'),
                Input('temp_graph','selectedData'),
                Input('precipitation_graph','selectedData'),
+               Input('weather-histogram','selectedData'),
                Input('weather-histogram','clickData')])
-def make_snow_graph(severity,selected_temp,selected_precs,clicked_bar):
-    print("clicked_bar",clicked_bar)
+def make_snow_graph(severity, selected_temp, selected_precs, weather_selected, weather_clicked):
+    #print("clicked_bar",clicked_bar)
     if selected_temp is None:
         tmps = [temp for temp in acc['Temp'].unique()]
     else:
@@ -1137,19 +1183,21 @@ def make_snow_graph(severity,selected_temp,selected_precs,clicked_bar):
     if selected_precs is None:
         precs = [p for p in acc['Precipitation'].unique()]
     else:
-        precs = [str(t["x"]) for t in selected_precs["points"]] 
-    
-    if clicked_bar is None:
-        weather_conditions = [w for w in acc['Weather'].unique()]
+        precs = [str(t["x"]) for t in selected_precs["points"]]
+
+    if weather_selected:
+        weather = [str(t["y"]) for t in weather_selected["points"]]
+    elif weather_clicked:
+        weather = [str(t["y"]) for t in weather_clicked["points"]]
     else:
-        weather_conditions = [str(t["y"]) for t in clicked_bar["points"]]
+        weather = [temp for temp in acc['Weather'].unique()]
         
     acc2 = DataFrame(acc[[
         'Accident Severity', 'Temp','Precipitation','Weather','Snowfall Amount']][
                          (acc['Accident Severity'].isin(severity))&
                          (acc['Temp'].isin(tmps)) &
                          (acc['Precipitation'].isin(precs)) &
-                         (acc['Weather'].isin(weather_conditions))
+                         (acc['Weather'].isin(weather))
                          ]).reset_index()
 
     dd = acc2.groupby(['Snowfall Amount']).size().reset_index(name='counts')

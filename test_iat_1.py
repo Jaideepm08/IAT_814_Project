@@ -978,7 +978,7 @@ def make_year_graph(severity,weekdays,time,curve_graph_selected, map_selected):
                                  'type': 'bar',
                                  'text':text,
                                  'hoverinfo': 'text',
-                                 'marker': {'color': '#99cfe0','width': 0.1}
+                                 'marker': {'color': '#f16d7a','width': 0.1}
                                  }                                
                             ],
                             'layout': {
@@ -1228,11 +1228,31 @@ def make_snow_graph(severity, selected_temp, selected_precs, weather_selected, w
 
 #make road_graph
 @app.callback(Output("road_graph", "figure"),
-              [Input('severityChecklist_road', 'value')])
-def make_road_graph(severity):
+              [Input('severityChecklist_road', 'value'),
+               Input('road_graph2','selectedData'),
+               Input('road_graph2','clickData'),
+               Input('road_graph3','selectedData'),
+               Input('road_graph3','clickData')])
+def make_road_graph(severity,road2_sel,road2_click,road3_sel,road3_click):
+    if road2_sel:
+        spec_conds = [str(t["x"]) for t in road2_sel["points"]]
+    elif road2_click:
+        spec_conds = road2_click['points'][0]['x']
+    else:
+        spec_conds = [s for s in acc['Special Conditions'].unique()]
+    
+    if road3_sel:
+        hazards = [str(t["x"]) for t in road3_sel["points"]]
+    elif road3_click:
+        hazards = road3_click['points'][0]['x']
+    else:
+        hazards = [s for s in acc['C/W Hazard'].unique()]
+        
     acc2 = DataFrame(acc[[
         'Accident Severity', 'Road Type','Road Surface']][
-                         (acc['Accident Severity'].isin(severity))   
+                         (acc['Accident Severity'].isin(severity))&
+                         (acc['Special Conditions'].isin(spec_conds))&
+                         (acc['C/W Hazard'].isin(hazards))
                          ]).reset_index()
     dd = acc2.groupby(['Road Type','Road Surface']).size().reset_index(name='counts')
     dd['Road Surface'] = dd['Road Surface'].str.replace(' ','-')
@@ -1266,11 +1286,32 @@ def make_road_graph(severity):
 
 #make road_graph2
 @app.callback(Output("road_graph2", "figure"),
-              [Input('severityChecklist_road', 'value')])
-def make_road_graph2(severity):
+              [Input('severityChecklist_road', 'value'),
+               Input('road_graph','selectedData'),
+               Input('road_graph','clickData'),
+               Input('road_graph3','selectedData'),
+               Input('road_graph3','clickData')])
+def make_road_graph2(severity,road_sel,road_click,road3_sel,road3_click):
+    if road_sel:
+        #print(road_sel)
+        typ = [str(t["y"]) for t in road_sel["points"]]
+    elif road_click:
+        typ = [road_click['points'][0]['y']]
+    else:
+        typ = [s for s in acc['Road Type'].unique()]
+    
+    if road3_sel:
+        hazards = [str(t["x"]) for t in road3_sel["points"]]
+    elif road3_click:
+        hazards = [road3_click['points'][0]['x']]
+    else:
+        hazards = [s for s in acc['C/W Hazard'].unique()]
+        
     acc2 = DataFrame(acc[[
         'Accident Severity', 'Special Conditions']][
-                         (acc['Accident Severity'].isin(severity))   
+                         (acc['Accident Severity'].isin(severity))&
+                         (acc['Road Type'].isin(typ))&
+                         (acc['C/W Hazard'].isin(hazards))
                          ]).reset_index()
     dd = acc2.groupby(['Special Conditions']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].apply(lambda x: x if x <= 30000 else randint(2000,8000))
@@ -1295,16 +1336,31 @@ def make_road_graph2(severity):
 #make road_graph3
 @app.callback(Output("road_graph3", "figure"),
               [Input('severityChecklist_weather', 'value'),
-               Input('road_graph2','selectedData')])
-def make_road_graph3(severity,selected_conditions):
-    if selected_conditions is None:
-        tmps = [temp for temp in acc['Special Conditions'].unique()]
+               Input('road_graph','selectedData'),
+               Input('road_graph','clickData'),
+               Input('road_graph2','selectedData'),
+               Input('road_graph2','clickData')
+               ])
+def make_road_graph3(severity,road_sel,road_click,road2_sel,road2_click):
+    if road_sel:
+        typ = [str(t["y"]) for t in road_sel["points"]]
+    elif road_click:
+        typ = [road_click['points'][0]['y']]
     else:
-        tmps = [str(t["x"]) for t in selected_conditions["points"]]
+        typ = [s for s in acc['Road Type'].unique()]
+    
+    if road2_sel:
+        spec_conds = [str(t["x"]) for t in road2_sel["points"]]
+    elif road2_click:
+        spec_conds = [road2_click['points'][0]['x']]
+    else:
+        spec_conds = [temp for temp in acc['Special Conditions'].unique()]
+        
     acc2 = DataFrame(acc[[
         'Accident Severity', 'Special Conditions','C/W Hazard']][
                          (acc['Accident Severity'].isin(severity))&
-                          acc['Special Conditions'].isin(tmps)
+                         (acc['Road Type'].isin(typ))&
+                         (acc['Special Conditions'].isin(spec_conds))
                          ]).reset_index()
 
     

@@ -121,7 +121,7 @@ app.layout = html.Div([
                     [
                         html.A(
                             html.Button("GitHub", id="learn-more-button"),
-                            href="https://plot.ly/dash/pricing/",
+                            href="https://github.com/Jaideepm08/IAT_814_Project",
                         )
                     ],
                     className="one-third column",
@@ -599,7 +599,7 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selec
                     'cmin':min(acc2['No. of Casualties in Acc.']),
                     #'line': {'width': 0},
                     'color': acc2['No. of Casualties in Acc.'],
-                    'colorscale': 'blues',
+                    'colorscale': 'pinkyl',
                     'colorbar' :{'title':"Count"},
                 },
 
@@ -765,7 +765,7 @@ def updateHeatmap(severity, weekdays, time, year,curve_graph_selected, map_selec
     # cas3 = cas_sl.append(cas_se, ignore_index=True)
     # cas4 = cas3.append(cas_fa, ignore_index=True)
     fig = px.sunburst(cas2, path=['Total','Accident Severity','Road Surface', 'Light Conditions (Banded)', 'age_by_decade'],\
-                      values='No. of Casualties in Acc.',color='No. of Casualties in Acc.',branchvalues="total",color_continuous_scale='Burg',)
+                      values='No. of Casualties in Acc.',color='No. of Casualties in Acc.',branchvalues="total",color_continuous_scale='pinkyl',)
     fig.update_layout(margin=dict(t=0, l=0, r=0, b=0),transition = {'duration': 500})
 
     # # Apply text after grouping
@@ -1119,6 +1119,7 @@ def make_weather_histogram(severity,selected_temp,selected_precs,selected_snowf)
                Input('precipitation_graph','selectedData'),
                Input('weather-histogram','clickData')])
 def make_snow_graph(severity,selected_temp,selected_precs,clicked_bar):
+    print("clicked_bar",clicked_bar)
     if selected_temp is None:
         tmps = [temp for temp in acc['Temp'].unique()]
     else:
@@ -1132,19 +1133,20 @@ def make_snow_graph(severity,selected_temp,selected_precs,clicked_bar):
     if clicked_bar is None:
         weather_conditions = [w for w in acc['Weather'].unique()]
     else:
-        weather_conditions = [clicked_bar['points'][0]['x']]
+        weather_conditions = [str(t["y"]) for t in clicked_bar["points"]]
         
     acc2 = DataFrame(acc[[
         'Accident Severity', 'Temp','Precipitation','Weather','Snowfall Amount']][
                          (acc['Accident Severity'].isin(severity))&
-                          acc['Temp'].isin(tmps)&
-                          acc['Precipitation'].isin(precs)&
-                          acc['Weather'].isin(weather_conditions)
+                         (acc['Temp'].isin(tmps)) &
+                         (acc['Precipitation'].isin(precs)) &
+                         (acc['Weather'].isin(weather_conditions))
                          ]).reset_index()
 
     dd = acc2.groupby(['Snowfall Amount']).size().reset_index(name='counts')
-    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 100 else randint(10,100))
-    dd['counts'] = dd['counts'].apply(lambda x: x if x >= 10 else randint(10,100))
+    dd['counts'] = dd['counts'].clip(0,200)
+    # dd['counts'] = dd['counts'].apply(lambda x: x if x <= 100 else randint(10,100))
+    # dd['counts'] = dd['counts'].apply(lambda x: x if x >= 10 else randint(10,100))
     #precc = acc2.groupby(["Precipitation"]).size().reset_index(name='counts')
     #precc = precc[(precc['Precipitation'] != 0)]
     figure={

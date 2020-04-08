@@ -39,7 +39,9 @@ YEARSORT = dict(zip(['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 
 # Set the global font family
 FONT_FAMILY = "Arial"
-
+plot_config={"displaylogo": False,
+        'modeBarButtonsToRemove': ['hoverClosestGeo','hoverClosestCartesian','hoverCompareCartesian','hoverClosestGl2d','pan2d','lasso2d','toImage','zoom2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d','toggleSpikelines']
+        }
 
 # Read in data from csv stored on github
 
@@ -224,13 +226,12 @@ app.layout = html.Div([
                             inputStyle={
                                         'background': 'red'
                                         },
-                            labelStyle={'display': 'inline-block'},       
                             className="check",
                             id="severityChecklist",
 
                         ),
                     html.Br(),
-                     dcc.Graph(id='year-graph',
+                     dcc.Graph(id='year-graph',config=plot_config
                         )   
                 ],
                 className="pretty_container four columns",
@@ -274,7 +275,7 @@ app.layout = html.Div([
                             className="row container-display",
                         ),
                         html.Div(
-                            [dcc.Graph(id="map")],
+                            [dcc.Graph(id="map",config=plot_config)],
                             id="countGraphContainer",
                             className="pretty_container",
                         ),
@@ -288,12 +289,12 @@ app.layout = html.Div([
         html.Div(
             [
                 html.Div(
-                    [dcc.Graph(id="pie_graph"
+                    [dcc.Graph(id="pie_graph",config=plot_config
                                )],
                     className="pretty_container seven columns",
                 ),
                 html.Div(
-                    [dcc.Graph(id="individual_graph")],
+                    [dcc.Graph(id="individual_graph",config=plot_config)],
                     className="pretty_container five columns",
                 ),
             ],
@@ -302,11 +303,11 @@ app.layout = html.Div([
         html.Div(
             [
                 html.Div(
-                    [dcc.Graph(id="heatmap")],
+                    [dcc.Graph(id="heatmap",config=plot_config)],
                     className="pretty_container seven columns",
                 ),
                 html.Div(
-                    [dcc.Graph(id="bar")],
+                    [dcc.Graph(id="bar",config=plot_config)],
                     className="pretty_container five columns",
                 ),
             ],
@@ -414,7 +415,7 @@ app.layout = html.Div([
                             className="row container-display",
                         ),
                         html.Div(
-                            [dcc.Graph('weather-histogram'),
+                            [dcc.Graph(id='weather-histogram',config=plot_config),
                              
                             ],
                             id="weatherGraphContainer",
@@ -429,13 +430,13 @@ app.layout = html.Div([
             className="row flex-display",
         ),
         html.Div([
-        html.Div([dcc.Graph(id='temp_graph')],
+        html.Div([dcc.Graph(id='temp_graph',config=plot_config)],
         className="pretty_container columns"
         ),
-        html.Div([dcc.Graph(id='precipitation_graph')],
+        html.Div([dcc.Graph(id='precipitation_graph',config=plot_config)],
         className="pretty_container columns"
         ),
-        html.Div([dcc.Graph(id='snow_graph')],
+        html.Div([dcc.Graph(id='snow_graph',config=plot_config)],
         className="pretty_container columns"
         )],
             className="flex-display")
@@ -460,13 +461,13 @@ app.layout = html.Div([
                         )],
                         className="pretty_container three columns"
                         ),
-               html.Div([dcc.Graph(id='road_graph')],
+               html.Div([dcc.Graph(id='road_graph',config=plot_config)],
                     className="pretty_container eight columns"
                     ),
-            html.Div([dcc.Graph(id='road_graph2')],
+            html.Div([dcc.Graph(id='road_graph2',config=plot_config)],
                     className="pretty_container five columns"
                     ),
-            html.Div([dcc.Graph(id='road_graph3')],
+            html.Div([dcc.Graph(id='road_graph3',config=plot_config)],
                     className="pretty_container five columns"
                     )
         ]),
@@ -487,13 +488,13 @@ app.layout = html.Div([
                         )],
                         className="pretty_container three columns"
                         ),
-               html.Div([dcc.Graph(id='vehicle_graph1')],
+               html.Div([dcc.Graph(id='vehicle_graph1',config=plot_config)],
                     className="pretty_container eight columns"
                     ),
-            html.Div([dcc.Graph(id='vehicle_graph2')],
+            html.Div([dcc.Graph(id='vehicle_graph2',config=plot_config)],
                     className="pretty_container five columns"
                     ),
-            html.Div([dcc.Graph(id='vehicle_graph3')],
+            html.Div([dcc.Graph(id='vehicle_graph3',config=plot_config)],
                     className="pretty_container five columns"
                     )
                
@@ -581,13 +582,14 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selec
         return 'Day : {}<br>Time : {:02d}:00<br>Number of casualties: {}'.format(row['Day'],
                                                                                  row['Hour'],
                                                                                  row['No. of Casualties in Acc.'])
-
+    acc2['text'] = acc2.apply(heatmapText, axis=1)
 
     figure = {
         'data': [
             go.Scatter(
                 x=acc2['Hour'],#.apply(lambda w: "{}{}".format(w,':00')),
                 y=sorted(acc2['Day'], key=lambda k: DAYSORT[k]),
+                text = acc2['text'],
                 #text=df[df['continent'] == i]['country'],
                 mode='markers',
                 marker_symbol='square',
@@ -963,12 +965,19 @@ def make_year_graph(severity,weekdays,time,curve_graph_selected, map_selected):
                              (acc['Accident Month'].isin(months)) &
                              (acc['Location'].isin(location))
                              ]).reset_index()
+        
+    dd =  acc2.groupby(["Accident Year"]).size().reset_index(name='counts')
+    dd['Accident Year'] = dd['Accident Year'].astype(int)
+    text = ['Year {}<br>{} crashes'.format(i,j) for i,j in zip(dd['Accident Year'],dd['counts'])]
+
 
     figure={
                             'data': [
-                                {'x': acc2.groupby(["Accident Year"]).size().reset_index(name='counts')['Accident Year'], 
-                                 'y': acc2.groupby(["Accident Year"]).size().reset_index(name='counts')['counts'], 
+                                {'x': dd['Accident Year'], 
+                                 'y': dd['counts'], 
                                  'type': 'bar',
+                                 'text':text,
+                                 'hoverinfo': 'text',
                                  'marker': {'color': '#99cfe0','width': 0.1}
                                  }                                
                             ],
@@ -977,7 +986,7 @@ def make_year_graph(severity,weekdays,time,curve_graph_selected, map_selected):
                                 'clickmode': 'event+select',
                                 'xaxis':{'title': 'Year','dtick' :1},
                                 'bargap':0.5,
-                                'height':300
+                                'height':400
                             }
                         }
     return figure

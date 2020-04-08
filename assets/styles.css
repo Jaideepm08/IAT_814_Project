@@ -50,6 +50,11 @@ body {
   padding-left: 0px;
 }
 
+.ching{
+  display: flex;
+  width: 60%
+}
+
 .flex-display {
   display: flex;
 }

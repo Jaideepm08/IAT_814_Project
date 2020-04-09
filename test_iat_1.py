@@ -766,7 +766,7 @@ def updateHeatmap(severity, weekdays, time, year,curve_graph_selected, map_selec
     # cas4 = cas3.append(cas_fa, ignore_index=True)
     fig = px.sunburst(cas2, path=['Total','Accident Severity','Road Surface', 'Light Conditions (Banded)', 'age_by_decade'],\
                       values='No. of Casualties in Acc.',color='No. of Casualties in Acc.',branchvalues="total",color_continuous_scale='pinkyl',)
-    fig.update_layout(margin=dict(t=0, l=0, r=0, b=0),transition = {'duration': 500})
+    fig.update_layout(title='Accident Severity -> Road Surface -> Light Conditions -> Casualty Age Group',margin=dict(t=30, l=0, r=0, b=0),transition = {'duration': 500})
 
     # # Apply text after grouping
     # def heatmapText(row):
@@ -1462,7 +1462,7 @@ def make_veh_graph2(severity,veh1_clicked,veh3_selected,veh3_clicked):
                                 'title': 'Filter by Type and Power of vehicle',
                                 'clickmode': 'event+select',
                                 'height':350,
-                                'margin':dict(l=25,r=15,b=55,t=35)                            }
+                                'margin':dict(l=25,r=15,b=55,t=35),                            }
                         }
     return figure
 

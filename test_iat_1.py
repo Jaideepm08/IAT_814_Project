@@ -1449,11 +1449,15 @@ def make_veh_graph2(severity,veh1_clicked,veh3_selected,veh3_clicked):
     dd = veh2.groupby(['Vehicle Type']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(1000,10000))
     dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
+    text = ['Vehicle Type: {}<br>{} crashes'.format(i,j) for i,j in zip(dd['Vehicle Type'],dd['counts'])]
+    
     figure={
                             'data': [
                                 {
                                  'x': dd['Vehicle Type'], 
                                  'y': dd['counts'], 
+                                 'text':text,
+                                 'hoverinfo':'text',
                                  'type': 'bar',
                                  'marker': {'color': '#ee9e07'}
                                  }                                
@@ -1496,12 +1500,15 @@ def make_veh_graph3(severity, graph1_selected, graph2_selected):
     dd = veh2.groupby(['Vehicle Manoeuvres']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(1000,10000))
     dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))    #precc = precc[(precc['Precipitation'] != 0)]
+    text = ['Vehicle Manoeuvre: {}<br>{} crashes'.format(i,j) for i,j in zip(dd['Vehicle Manoeuvres'],dd['counts'])]
     figure={
                             'data': [
                                 {
                                  'mode':"lines+markers",
                                  'x': dd['Vehicle Manoeuvres'], 
                                  'y': dd['counts'], 
+                                 'text':text,
+                                 'hoverinfo':'text',
                                  'type': 'scatter'
                                  }                                
                             ],
@@ -1534,10 +1541,13 @@ def make_vehicle_graph1(severity,clickData,selected_mans):
     dd = veh2.groupby(['Vehicle Type (Banded)']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(20000,30000))
     dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))  
+    text = ['Vehicle Type: {}<br>{} crashes'.format(i,j) for i,j in zip(dd['Vehicle Type (Banded)'],dd['counts'])]
     figure={	
                             'data': [	
                                 {'x': dd['Vehicle Type (Banded)'], 	
-                                 'y': dd['counts'], 	
+                                 'y': dd['counts'], 
+                                 'text':text,
+                                 'hoverinfo':'text',
                                  'type': 'bar',	
                                  'marker':{'color':['#0936e8','#81b01c','#32a87d','#1c50b0','#7b02de','#de0291','#deb602'],'opacity':0.7}
                                  }                                	

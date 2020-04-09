@@ -85,19 +85,9 @@ app.layout = html.Div([
             [
                 html.Div(
                     [
-                        dcc.Upload(
-                            id='upload-data',
-                            children=html.Div([html.A('Custom Dataset')]),
-                            style={
-                                'width': '90%',
-                                'height': '60px',
-                                'lineHeight': '60px',
-                                'borderWidth': '1px',
-                                'borderStyle': 'dashed',
-                                'borderRadius': '5px',
-                                'textAlign': 'center',
-                                'margin': '10px'
-                            },
+                        html.A(
+                            html.Button("Project Report", id="report-button"),
+                            href="https://github.com/Jaideepm08/IAT_814_Project",
                         )
                     ],
                     className="one-third column",
@@ -211,7 +201,7 @@ app.layout = html.Div([
                             className="dcc_control",
                         )   
                     ],
-                    className="pretty_container three columns",
+                    className="pretty_container four columns",
                     style={'display':'none'},
                     id="cross-filter-options",
                 ),
@@ -234,7 +224,7 @@ app.layout = html.Div([
                      dcc.Graph(id='year-graph',config=plot_config
                         )   
                 ],
-                className="pretty_container three columns",
+                className="pretty_container four columns",
                 #style={'display':'none'},
                 id="cross-filter-graphs",),
                 html.Div(
@@ -281,7 +271,7 @@ app.layout = html.Div([
                         ),
                     ],
                     id="right-column",
-                    className="ten columns",
+                    className="eight columns",
                 ),
             ],
             className="row flex-display",
@@ -317,15 +307,16 @@ app.layout = html.Div([
         ]),
        dcc.Tab(label='Weather', children=[
                
-        html.Div(
+               html.Div(
             [
                 html.Div(
                     [
-                        html.P("Filter by Accident Severity:", className="control_label", style={'font-weight': 'bold'}),
+                        html.P("Filter by Accident Severity:", className="control_label",
+                               style={'font-weight': 'bold'}),
                         dcc.Checklist(  # Checklist for the three different severity values
                             options=[
                                 {'label': sev, 'value': sev} for sev in acc['Accident Severity'].unique()
-                                    ],
+                            ],
                             value=[sev for sev in acc['Accident Severity'].unique()],
                             inputStyle={
                                         'background': 'red'
@@ -373,7 +364,7 @@ app.layout = html.Div([
                             className="dcc_control",
                         )                        
                     ],
-                    className="pretty_container three columns",
+                    className="pretty_container four columns",
                     id="cross-filter-options_weather",
                 ),
                 html.Div(
@@ -423,27 +414,29 @@ app.layout = html.Div([
                     
                     ],
                     id="right-column_weather",
-                    className="ten columns",
+                    className="eight columns",
                 ),
             ],
             className="row flex-display",
         ),
         html.Div([
-            html.Div([dcc.Graph(id='temp_graph',config=plot_config)],
-                      className="pretty_container four columns"
-                    ),
-            html.Div([dcc.Graph(id='precipitation_graph',config=plot_config)],
-                      className="pretty_container four columns"
-                    ),
-            html.Div([dcc.Graph(id='snow_graph',config=plot_config)],
-                      className="pretty_container four columns"
-                    )],
-            className="row flex-display")
+        html.Div([dcc.Graph(id='temp_graph',config=plot_config)],
+        className="pretty_container columns"
+        ),
+        html.Div([dcc.Graph(id='precipitation_graph',config=plot_config)],
+        className="pretty_container columns"
+        ),
+        html.Div([dcc.Graph(id='snow_graph',config=plot_config)],
+        className="pretty_container columns"
+        )],
+            className="flex-display")
                
                
                
                ]),
        dcc.Tab(label='Road Conditions', children=[
+               html.Div([
+               html.Div([
                html.Div([   html.P("Filter by Accident Severity:", className="control_label",
                                style={'font-weight': 'bold'}),
                            dcc.Checklist(  # Checklist for the three different severity values
@@ -454,26 +447,23 @@ app.layout = html.Div([
                             inputStyle={
                                         'background': 'red'
                                         },
+                            labelStyle={'display': 'inline-block'},
                             className="check",
                             #labelStyle={'display': 'inline-block'},
                             id="severityChecklist_road"
+                        )],
+                        className="pretty_container"
                         ),
-                            dcc.Graph(id='road_graph2',config=plot_config),
-                            dcc.Graph(id='road_graph3',config=plot_config)
-                            ],
-                        className="pretty_container four columns"
-                        ),
-              html.Div(
-                  [
-                   html.Div([dcc.Graph(id='road_graph',config=plot_config)],
-                        id="countGraphContainer_2",
-                        className="pretty_container one-half columns"
-                        ),
-                      ],
-                    id="right-column_road",
-                    className="seven columns",),
-
-
+               html.Div([dcc.Graph(id='road_graph2',config=plot_config)],
+                    className="pretty_container"
+                    ),
+            html.Div([dcc.Graph(id='road_graph3',config=plot_config)],
+                    className="pretty_container"
+                    )],className="flex-vert four columns"),
+               html.Div([dcc.Graph(id='road_graph',config=plot_config)],
+                    className="pretty_container eight columns"
+                    )],className="flex-display")
+            
         ]),
        dcc.Tab(label='Vehicle Details', children=[
                html.Div([   html.P("Filter by Accident Severity:", className="control_label",
@@ -1293,8 +1283,8 @@ def make_road_graph(severity,road2_sel,road2_click,road3_sel,road3_click):
                                     opacity=0.6,
                                     marker_size=dd['counts'],
                                     marker={
-                                        'line':{'width':2,'color':'DarkSlateGrey'},
-                                        'sizeref' : (2.0* max(dd['counts'])/(12** 2))
+                                        'line':{'width':3,'color':'DarkSlateGrey'},
+                                        'sizeref' : (2.0* max(dd['counts'])/(16** 2))
                                     },
                     
                                 )                             
@@ -1302,8 +1292,9 @@ def make_road_graph(severity,road2_sel,road2_click,road3_sel,road3_click):
                             'layout': {
                                 'title': 'Accidents with respect to Road Types and Surfaces',
                                 'clickmode': 'event+select',
-                                'transition': {'duration': 500}
-                                #'xaxis':{'title': 'Temperature(C)','dtick' :5,'range':[-5,40]},
+                                'transition': {'duration': 500},
+                                'height':830,
+                                'xaxis':{'title': 'Condition of Road Surface'},
                             }
                         }
     return figure
@@ -1356,6 +1347,8 @@ def make_road_graph2(severity,road_sel,road_click,road3_sel,road3_click):
                             'layout': {
                                 'title': 'Filter by Special Conditions',
                                 'clickmode': 'event+select',
+                                'height':350,
+                                'margin':dict(l=25,r=15,b=55,t=35)
                             }
                         }
     return figure
@@ -1406,10 +1399,10 @@ def make_road_graph3(severity,road_sel,road_click,road2_sel,road2_click):
                                  'type': 'scatter',
                                  'marker':dict(	
                                     color='rgba(135, 206, 250, 0.8)',	
-                                    size=22,	
+                                    size=16,	
                                     line=dict(	
                                         color='MediumPurple',	
-                                        width=2.8	
+                                        width=2.0	
                                     )	
                                 )
                                  }                                
@@ -1417,6 +1410,8 @@ def make_road_graph3(severity,road_sel,road_click,road2_sel,road2_click):
                             'layout': {
                                 'title': 'Filter by Hazards on Road',
                                 'clickmode': 'event+select',
+                                'height':350,
+                                'margin':dict(l=25,r=15,b=55,t=35)
                             }
                         }
     return figure

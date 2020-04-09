@@ -133,7 +133,7 @@ app.layout = html.Div([
                 html.Div(
                     [
                         html.P(
-                            "Filter by incident date (or select range in histogram):",
+                            "Filter by incident date :",
                             className="control_label", style={'font-weight': 'bold'}
                         ),
                         html.Br(),
@@ -466,6 +466,8 @@ app.layout = html.Div([
             
         ]),
        dcc.Tab(label='Vehicle Details', children=[
+               html.Div([
+               html.Div([
                html.Div([   html.P("Filter by Accident Severity:", className="control_label",
                                style={'font-weight': 'bold'}),
                            dcc.Checklist(  # Checklist for the three different severity values
@@ -476,22 +478,23 @@ app.layout = html.Div([
                             inputStyle={
                                         'background': 'red'
                                         },
+                            labelStyle={'display':'inline'},
                             className="check",
                             #labelStyle={'display': 'inline-block'},
                             id="severityChecklist_vehicle"
                         )],
-                        className="pretty_container three columns"
+                        className="pretty_container"
                         ),
+               html.Div([dcc.Graph(id='vehicle_graph2',config=plot_config)],
+                    className="pretty_container"
+                    ),
+               html.Div([dcc.Graph(id='vehicle_graph3',config=plot_config)],
+                    className="pretty_container"
+                    )],className="flex-vert four columns"),               
                html.Div([dcc.Graph(id='vehicle_graph1',config=plot_config)],
-                    className="pretty_container eight columns"
-                    ),
-            html.Div([dcc.Graph(id='vehicle_graph2',config=plot_config)],
-                    className="pretty_container five columns"
-                    ),
-            html.Div([dcc.Graph(id='vehicle_graph3',config=plot_config)],
-                    className="pretty_container five columns"
-                    )
-               
+                    className="pretty_container"
+                    )],className="flex-display")
+ 
                ]),
     ]),
         
@@ -763,7 +766,7 @@ def updateHeatmap(severity, weekdays, time, year,curve_graph_selected, map_selec
     # cas4 = cas3.append(cas_fa, ignore_index=True)
     fig = px.sunburst(cas2, path=['Total','Accident Severity','Road Surface', 'Light Conditions (Banded)', 'age_by_decade'],\
                       values='No. of Casualties in Acc.',color='No. of Casualties in Acc.',branchvalues="total",color_continuous_scale='pinkyl',)
-    fig.update_layout(margin=dict(t=0, l=0, r=0, b=0),transition = {'duration': 500})
+    fig.update_layout(title='Accident Severity -> Road Surface -> Light Conditions -> Casualty Age Group',margin=dict(t=30, l=0, r=0, b=0),transition = {'duration': 500})
 
     # # Apply text after grouping
     # def heatmapText(row):
@@ -1162,7 +1165,7 @@ def make_weather_histogram(severity,selected_temp,selected_precs,selected_snowf)
                                  'marker': {'color':['#0936e8','#81b01c','#32a87d','#1c50b0','#7b02de','#de0291','#deb602','#09e8e8','#e80923'],'width': 8,'opacity':0.7}	
                                  }                                	
                             ],	
-                            'layout': {
+                            'layout': {	
                                 'title': 'No. of Accidents with respect to Weather Conditions',	
                                 'clickmode': 'event+select',	
                                 'xaxis':{'title': 'Crash Count'},	
@@ -1458,7 +1461,8 @@ def make_veh_graph2(severity,veh1_clicked,veh3_selected,veh3_clicked):
                             'layout': {
                                 'title': 'Filter by Type and Power of vehicle',
                                 'clickmode': 'event+select',
-                            }
+                                'height':350,
+                                'margin':dict(l=25,r=15,b=55,t=35),                            }
                         }
     return figure
 
@@ -1511,6 +1515,8 @@ def make_veh_graph3(severity,clickData1,clickData2):
                             'layout': {
                                 'title': 'Filter by Vehicle Manoeuvres',
                                 'clickmode': 'event+select',
+                                'height':350,
+                                'margin':dict(l=25,r=15,b=55,t=35)
                             }
                         }
     return figure
@@ -1533,7 +1539,7 @@ def make_vehicle_graph1(severity,clickData,selected_mans):
     veh2 = DataFrame(veh[[
         'Accident Severity', 'Vehicle Type','Vehicle Manoeuvres','Vehicle Type (Banded)']]).reset_index()
     dd = veh2.groupby(['Vehicle Type (Banded)']).size().reset_index(name='counts')
-    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(1000,10000))
+    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(20000,30000))
     dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))  
     figure={	
                             'data': [	
@@ -1546,6 +1552,7 @@ def make_vehicle_graph1(severity,clickData,selected_mans):
                             'layout': {	
                                 'title': 'Type of Vehicle',	
                                 'clickmode': 'event+select',	
+                                'height':830
                             }	
                         }
 

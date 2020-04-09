@@ -211,7 +211,7 @@ app.layout = html.Div([
                             className="dcc_control",
                         )   
                     ],
-                    className="pretty_container four columns",
+                    className="pretty_container three columns",
                     style={'display':'none'},
                     id="cross-filter-options",
                 ),
@@ -234,7 +234,7 @@ app.layout = html.Div([
                      dcc.Graph(id='year-graph',config=plot_config
                         )   
                 ],
-                className="pretty_container four columns",
+                className="pretty_container three columns",
                 #style={'display':'none'},
                 id="cross-filter-graphs",),
                 html.Div(
@@ -281,7 +281,7 @@ app.layout = html.Div([
                         ),
                     ],
                     id="right-column",
-                    className="eight columns",
+                    className="ten columns",
                 ),
             ],
             className="row flex-display",
@@ -317,16 +317,15 @@ app.layout = html.Div([
         ]),
        dcc.Tab(label='Weather', children=[
                
-               html.Div(
+        html.Div(
             [
                 html.Div(
                     [
-                        html.P("Filter by Accident Severity:", className="control_label",
-                               style={'font-weight': 'bold'}),
+                        html.P("Filter by Accident Severity:", className="control_label", style={'font-weight': 'bold'}),
                         dcc.Checklist(  # Checklist for the three different severity values
                             options=[
                                 {'label': sev, 'value': sev} for sev in acc['Accident Severity'].unique()
-                            ],
+                                    ],
                             value=[sev for sev in acc['Accident Severity'].unique()],
                             inputStyle={
                                         'background': 'red'
@@ -374,7 +373,7 @@ app.layout = html.Div([
                             className="dcc_control",
                         )                        
                     ],
-                    className="pretty_container four columns",
+                    className="pretty_container three columns",
                     id="cross-filter-options_weather",
                 ),
                 html.Div(
@@ -424,22 +423,22 @@ app.layout = html.Div([
                     
                     ],
                     id="right-column_weather",
-                    className="eight columns",
+                    className="ten columns",
                 ),
             ],
             className="row flex-display",
         ),
         html.Div([
-        html.Div([dcc.Graph(id='temp_graph',config=plot_config)],
-        className="pretty_container columns"
-        ),
-        html.Div([dcc.Graph(id='precipitation_graph',config=plot_config)],
-        className="pretty_container columns"
-        ),
-        html.Div([dcc.Graph(id='snow_graph',config=plot_config)],
-        className="pretty_container columns"
-        )],
-            className="flex-display")
+            html.Div([dcc.Graph(id='temp_graph',config=plot_config)],
+                      className="pretty_container four columns"
+                    ),
+            html.Div([dcc.Graph(id='precipitation_graph',config=plot_config)],
+                      className="pretty_container four columns"
+                    ),
+            html.Div([dcc.Graph(id='snow_graph',config=plot_config)],
+                      className="pretty_container four columns"
+                    )],
+            className="row flex-display")
                
                
                
@@ -458,18 +457,23 @@ app.layout = html.Div([
                             className="check",
                             #labelStyle={'display': 'inline-block'},
                             id="severityChecklist_road"
-                        )],
-                        className="pretty_container three columns"
                         ),
-               html.Div([dcc.Graph(id='road_graph',config=plot_config)],
-                    className="pretty_container eight columns"
-                    ),
-            html.Div([dcc.Graph(id='road_graph2',config=plot_config)],
-                    className="pretty_container five columns"
-                    ),
-            html.Div([dcc.Graph(id='road_graph3',config=plot_config)],
-                    className="pretty_container five columns"
-                    )
+                            dcc.Graph(id='road_graph2',config=plot_config),
+                            dcc.Graph(id='road_graph3',config=plot_config)
+                            ],
+                        className="pretty_container four columns"
+                        ),
+              html.Div(
+                  [
+                   html.Div([dcc.Graph(id='road_graph',config=plot_config)],
+                        id="countGraphContainer_2",
+                        className="pretty_container one-half columns"
+                        ),
+                      ],
+                    id="right-column_road",
+                    className="seven columns",),
+
+
         ]),
        dcc.Tab(label='Vehicle Details', children=[
                html.Div([   html.P("Filter by Accident Severity:", className="control_label",

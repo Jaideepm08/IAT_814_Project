@@ -50,6 +50,11 @@ body {
   padding-left: 0px;
 }
 
+.ching{
+  display: flex;
+  width: 60%
+}
+
 .flex-display {
   display: flex;
 }
@@ -113,6 +118,11 @@ body {
   flex-direction: column;
 }
 
+#right-column_weather {
+  display: flex;
+  flex-direction: column;
+}
+
 #wells {
   flex: 1;
 }
@@ -134,6 +144,26 @@ body {
 }
 
 #water2 {
+  flex: 1;
+}
+
+#weather {
+  flex: 1;
+}
+
+#temp {
+  flex: 1;
+}
+
+#surface {
+  flex: 1;
+}
+
+#precip {
+  flex: 1;
+}
+
+#snowf {
   flex: 1;
 }
 

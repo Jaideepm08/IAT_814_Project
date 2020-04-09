@@ -75,7 +75,7 @@ app.css.append_css({
 })
 
 ## SETTING UP THE APP LAYOUT ##
-app.title = 'My Title'
+app.title = 'IAT 814 Dashboard'
 # Main layout container
 app.layout = html.Div([
         dcc.Store(id="aggregate_data"),
@@ -594,10 +594,11 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selec
                 x=acc2['Hour'],#.apply(lambda w: "{}{}".format(w,':00')),
                 y=sorted(acc2['Day'], key=lambda k: DAYSORT[k]),
                 text = acc2['text'],
+                hoverinfo='text',
                 #text=df[df['continent'] == i]['country'],
                 mode='markers',
                 marker_symbol='square',
-                opacity=0.8,
+                opacity=1,
                 marker={
                     'size': 34,
                     'line':{'width':2,'color':'DarkSlateGrey'},
@@ -615,7 +616,7 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selec
         'layout': {
                         'clickmode': 'event+select',
                         'title':'Accidents with respect to Day and Time',
-                        'xaxis':{'title': 'Hours','dtick' :2,'range':[0,24]},
+                        'xaxis':{'title': 'Hours','dtick' :2,'range':[0.1,24.1]},
                         'yaxis':{'title': 'Days'},
                         #'margin':{'l': 40, 'b': 40, 't': 80, 'r': 10},
                         'legend':{'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
@@ -1028,14 +1029,18 @@ def make_temp_graph(severity, weather_selected, weather_clicked, snow_selected, 
                          (acc['Snowfall Amount'].isin(snow)) &
                          (acc['Precipitation'].isin(preci))
                          ]).reset_index()
-                   
+    dd = acc2.groupby(["Temp"]).size().reset_index(name='counts')
+    text = ['Temperature : {}<br>{} Crashes'.format(i,j) for i,j in zip(dd['Temp'],dd['counts'])]
+              
                    
     figure={
                             'data': [
                                 {
                                  'mode':"lines+markers",
-                                 'x': acc2.groupby(["Temp"]).size().reset_index(name='counts')['Temp'], 
-                                 'y': acc2.groupby(["Temp"]).size().reset_index(name='counts')['counts'], 
+                                 'x': dd['Temp'], 
+                                 'y': dd['counts'], 
+                                 'text':text,
+                                 'hoverinfo':'text',
                                  'type': 'scatter',
                                  'marker': {'color': '#ee9e07'}
                                  }                                
@@ -1085,6 +1090,7 @@ def make_precipitation_graph(severity,selected_temp, weather_selected, weather_c
                    
     dd = acc2.groupby(['Precipitation']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].clip(0,500)
+    text = ['Precipitation : {}<br>{} Crashes'.format(i,j) for i,j in zip(dd['Precipitation'],dd['counts'])]
     #dd['counts'] = dd['counts'].apply(lambda x: x if x <= 1000 else randint(100,1000))
     #dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
     #precc = acc2.groupby(["Precipitation"]).size().reset_index(name='counts')
@@ -1095,6 +1101,8 @@ def make_precipitation_graph(severity,selected_temp, weather_selected, weather_c
                                  'mode':"markers",
                                  'x': dd['Precipitation'], 
                                  'y': dd['counts'], 
+                                 'text':text,
+                                 'hoverinfo':'text',
                                  'type': 'scatter',
                                  'marker':dict(	
                                     color='rgba(135, 206, 250, 0.7)',	
@@ -1146,15 +1154,19 @@ def make_weather_histogram(severity,selected_temp,selected_precs,selected_snowf)
                           acc['Precipitation'].isin(precs)&
                           acc['Snowfall Amount'].isin(snowf)
                          ]).reset_index()
-                   
+    
     dd = acc2.groupby(['Weather']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(9000,10000))
     dd['counts'] = dd['counts'].apply(lambda x: x if x >= 100 else randint(100,1000))
+    text = ['Weather : {}<br>{} Crashes'.format(i,j) for i,j in zip(dd['Weather'],dd['counts'])]
+
     
     figure={	
                             'data': [	
                                 {'y': dd['Weather'], 	
                                  'x': dd['counts'], 	
+                                 'text': text,
+                                 'hoverinfo':'text',
                                  'type': 'bar',	
                                  'orientation':'h',	
                                  'marker': {'color':['#0936e8','#81b01c','#32a87d','#1c50b0','#7b02de','#de0291','#deb602','#09e8e8','#e80923'],'width': 8,'opacity':0.7}	
@@ -1206,6 +1218,7 @@ def make_snow_graph(severity, selected_temp, selected_precs, weather_selected, w
 
     dd = acc2.groupby(['Snowfall Amount']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].clip(0,200)
+    text = ['Snowfall : {}<br>{} Crashes'.format(i,j) for i,j in zip(dd['Snowfall Amount'],dd['counts'])]
     # dd['counts'] = dd['counts'].apply(lambda x: x if x <= 100 else randint(10,100))
     # dd['counts'] = dd['counts'].apply(lambda x: x if x >= 10 else randint(10,100))
     #precc = acc2.groupby(["Precipitation"]).size().reset_index(name='counts')
@@ -1216,6 +1229,8 @@ def make_snow_graph(severity, selected_temp, selected_precs, weather_selected, w
                                  'mode':"lines+markers",
                                  'x': dd['Snowfall Amount'], 
                                  'y': dd['counts'], 
+                                 'text':text,
+                                 'hoverinfo':'text',
                                  'type': 'scatter',
                                  'marker': {'color': '#FF6347'},
                                  'line':{'width':0.5}
@@ -1264,11 +1279,16 @@ def make_road_graph(severity,road2_sel,road2_click,road3_sel,road3_click):
     dd['Road Surface'] = dd['Road Surface'].str.replace('(S/R)','Unknown')
     dd['counts'] = dd['counts'].apply(lambda x: x if x <= 30000 else randint(2000,8000))
     dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
+    
+    txt = ['Road Type : {}<br>Road Surface : {}<br>{} Crashes'.format(i,j,k) for i,j,k in zip(dd['Road Type'],dd['Road Surface'],dd['counts'])]
+    
     figure={
                             'data': [
                                     go.Scatter(
                                     x=dd['Road Surface'], 
                                     y=dd['Road Type'],#.apply(lambda w: "{}{}".format(w,':00')),
+                                    text=txt,
+                                    hoverinfo='text',
                                     mode='markers',
                                     opacity=0.6,
                                     marker_size=dd['counts'],
@@ -1320,12 +1340,15 @@ def make_road_graph2(severity,road_sel,road_click,road3_sel,road3_click):
     dd = acc2.groupby(['Special Conditions']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].apply(lambda x: x if x <= 30000 else randint(2000,8000))
     dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
+    text = ['Special Conditions : {}<br>{} Crashes'.format(i,j) for i,j in zip(dd['Special Conditions'],dd['counts'])]
     figure={
                             'data': [
                                 {
                                  'mode':"lines+markers",
                                  'x': dd['Special Conditions'], 
                                  'y': dd['counts'], 
+                                 'text':text,
+                                 'hoverinfo':'text',
                                  'type': 'scatter',
                                  'marker': {'color': '#ee9e07'}
                                  }                                
@@ -1371,12 +1394,15 @@ def make_road_graph3(severity,road_sel,road_click,road2_sel,road2_click):
     dd = acc2.groupby(['C/W Hazard']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].apply(lambda x: x if x <= 30000 else randint(2000,8000))
     dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))    #precc = precc[(precc['Precipitation'] != 0)]
+    text = ['Hazard on Road : {}<br>{} Crashes'.format(i,j) for i,j in zip(dd['C/W Hazard'],dd['counts'])]
     figure={
                             'data': [
                                 {
                                  'mode':"markers",
                                  'x': dd['C/W Hazard'], 
                                  'y': dd['counts'], 
+                                 'text':text,
+                                 'hoverinfo':'text',
                                  'type': 'scatter',
                                  'marker':dict(	
                                     color='rgba(135, 206, 250, 0.8)',	
@@ -1398,11 +1424,29 @@ def make_road_graph3(severity,road_sel,road_click,road2_sel,road2_click):
 
 #make vehicle_graph2
 @app.callback(Output("vehicle_graph2", "figure"),
-              [Input('severityChecklist_vehicle', 'value')])
-def make_veh_graph2(severity):
+              [Input('severityChecklist_vehicle', 'value'),
+               #Input('vehicle_graph1','selectedData'),
+               Input('vehicle_graph1','clickData'),
+               Input('vehicle_graph3','selectedData'),
+               Input('vehicle_graph3','clickData')])
+def make_veh_graph2(severity,veh1_clicked,veh3_selected,veh3_clicked):
+    if veh1_clicked:
+        typ = [veh1_clicked['points'][0]['x']]
+    else:
+        typ = [s for s in veh['Vehicle Type (Banded)'].unique()]
+    
+    if veh3_selected:
+        mans = [str(t["x"]) for t in veh3_selected["points"]]
+    elif veh3_clicked:
+        mans = [veh3_clicked['points'][0]['x']]
+    else:
+        mans = [temp for temp in veh['Vehicle Manoeuvres'].unique()]
+        
     veh2 = DataFrame(veh[[
-        'Accident Severity', 'Vehicle Type']][
-                         (veh['Accident Severity'].isin(severity))   
+        'Accident Severity', 'Vehicle Type','Vehicle Type (Banded)','Vehicle Manoeuvres']][
+                         (veh['Accident Severity'].isin(severity))&
+                         (veh['Vehicle Type (Banded)'].isin(typ))&
+                         (veh['Vehicle Manoeuvres'].isin(mans))
                          ]).reset_index()
     dd = veh2.groupby(['Vehicle Type']).size().reset_index(name='counts')
     dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(1000,10000))
@@ -1426,17 +1470,24 @@ def make_veh_graph2(severity):
 #make vehicle_graph3
 @app.callback(Output("vehicle_graph3", "figure"),
               [Input('severityChecklist_vehicle', 'value'),
+               Input('vehicle_graph1','clickData'),
                Input('vehicle_graph2','clickData')])
-def make_veh_graph3(severity,clickData):
-    if clickData is None:
+def make_veh_graph3(severity,clickData1,clickData2):
+    if clickData1 is None:
+        types = veh['Vehicle Type (Banded)'].unique()[0]
+    else:
+        types = clickData1['points'][0]['x']
+        
+    if clickData2 is None:
         typ = veh['Vehicle Type'].unique()[0]
     else:
-        typ = clickData['points'][0]['x']
+        typ = clickData2['points'][0]['x']
         
     veh2 = DataFrame(veh[[
-        'Accident Severity', 'Vehicle Type','Vehicle Manoeuvres']][
+        'Accident Severity', 'Vehicle Type','Vehicle Manoeuvres','Vehicle Type (Banded)']][
                          (veh['Accident Severity'].isin(severity))&
-                          veh['Vehicle Type'].isin([typ])
+                         (veh['Vehicle Type (Banded)'].isin([types]))&
+                         (veh['Vehicle Type'].isin([typ]))
                          ]).reset_index()
 
     

@@ -30,6 +30,10 @@ body {
   margin: 0 0 0 0;
   padding: 0 0 0 0;
 }
+.true-flex {
+  display: flex;
+  width: calc(100%-40px);
+}
 
 .dcc_control {
   margin: 0;

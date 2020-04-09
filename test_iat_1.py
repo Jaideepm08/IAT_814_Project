@@ -1469,24 +1469,27 @@ def make_veh_graph2(severity,veh1_clicked,veh3_selected,veh3_clicked):
 #make vehicle_graph3
 @app.callback(Output("vehicle_graph3", "figure"),
               [Input('severityChecklist_vehicle', 'value'),
-               Input('vehicle_graph1','clickData'),
-               Input('vehicle_graph2','clickData')])
-def make_veh_graph3(severity,clickData1,clickData2):
-    if clickData1 is None:
-        types = veh['Vehicle Type (Banded)'].unique()[0]
+               Input('vehicle_graph1','selectedData'),
+               Input('vehicle_graph2','selectedData')])
+def make_veh_graph3(severity, graph1_selected, graph2_selected):
+    print("points",graph1_selected)
+    if graph1_selected is None:
+        types = [s for s in veh['Vehicle Type (Banded)'].unique()]
     else:
-        types = clickData1['points'][0]['x']
+        types = [str(t["x"]) for t in graph1_selected["points"]]
+        #types = clickData1['points'][0]['x']
         
-    if clickData2 is None:
-        typ = veh['Vehicle Type'].unique()[0]
+    if graph2_selected is None:
+        typ = [s for s in veh['Vehicle Type'].unique()]
+        #typ = veh['Vehicle Type'].unique()[0]
     else:
-        typ = clickData2['points'][0]['x']
+        typ = [str(t["x"]) for t in graph2_selected["points"]]
         
     veh2 = DataFrame(veh[[
         'Accident Severity', 'Vehicle Type','Vehicle Manoeuvres','Vehicle Type (Banded)']][
                          (veh['Accident Severity'].isin(severity))&
-                         (veh['Vehicle Type (Banded)'].isin([types]))&
-                         (veh['Vehicle Type'].isin([typ]))
+                         (veh['Vehicle Type (Banded)'].isin(types))&
+                         (veh['Vehicle Type'].isin(typ))
                          ]).reset_index()
 
     

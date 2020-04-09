@@ -1172,7 +1172,7 @@ def make_weather_histogram(severity,selected_temp,selected_precs,selected_snowf)
                                  'marker': {'color':['#0936e8','#81b01c','#32a87d','#1c50b0','#7b02de','#de0291','#deb602','#09e8e8','#e80923'],'width': 8,'opacity':0.7}	
                                  }                                	
                             ],	
-                            'layout': {	
+                            'layout': {
                                 'title': 'No. of Accidents with respect to Weather Conditions',	
                                 'clickmode': 'event+select',	
                                 'xaxis':{'title': 'Crash Count'},	

@@ -45,12 +45,12 @@ plot_config={"displaylogo": False,
 
 # Read in data from csv stored on github
 
-acc = read_csv("data/Attendant_v2_fixed.csv").dropna(how='any', axis=0)
-casualty = read_csv("data/casualty_df_age_grp.csv").dropna(how='any', axis=0)
-veh = read_csv("data/Vehicle_10-18.csv")
-# acc = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/Attendant_v2_fixed.csv").dropna(how='any', axis=0)
-# casualty = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/casualty_df_age_grp.csv").dropna(how='any', axis=0)
-# veh = read_csv("/Users/jaideepmishra/PycharmProjects/Dash/Vehicle_10-18.csv")
+# acc = read_csv("data/Attendant_v2_fixed.csv").dropna(how='any', axis=0)
+# casualty = read_csv("data/casualty_df_age_grp.csv").dropna(how='any', axis=0)
+# veh = read_csv("data/Vehicle_10-18.csv")
+acc = read_csv("Attendant_v2_fixed.csv").dropna(how='any', axis=0)
+casualty = read_csv("casualty_df_age_grp.csv").dropna(how='any', axis=0)
+veh = read_csv("Vehicle_10-18.csv")
 
 casualty['Hour'] = casualty['Time'].apply(lambda x: int(x.split(':')[0]))
 
@@ -506,11 +506,19 @@ app.layout = html.Div([
 #This callback takes input from year-graph and gives output to year_slider
 @app.callback(
     Output('year_slider', 'value'),
-    [Input('year-graph', 'clickData')])
-def display_click_data(clickData):
-    if clickData is None:
+    [Input('year-graph', 'selectedData')])
+def display_click_data(selectedData):
+    if selectedData is None:
         return 2012
-    return clickData['points'][0]['x']
+    return selectedData['points'][0]['x']
+
+@app.callback(
+    Output('well_statuses', 'value'),
+    [Input('individual_graph', 'selectedData')])
+def change_months(selectedData):
+    if selectedData is None:
+        return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    return [str(mnts["x"]) for mnts in selectedData["points"]]
 
 #This callback takes input from heatmap and ouputs in day of week dropdown
 @app.callback(
@@ -537,14 +545,15 @@ def display_click_data_weekday(selectedData):
                Input('hourSlider', 'value'),
                Input('individual_graph','selectedData'),
                Input('map','selectedData'),
+               Input('well_statuses','value'),
                ])
-def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selected):
+def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selected,months):
     hours = [i for i in range(time[0], time[1] + 1)]
 
-    if curve_graph_selected is None:
-        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
-    else:
-        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
+    # if curve_graph_selected is None:
+    #     months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    # else:
+    #     months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
 
     #print("map selected data",map_selected)
 
@@ -599,7 +608,7 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selec
                     'cmin':min(acc2['No. of Casualties in Acc.']),
                     #'line': {'width': 0},
                     'color': acc2['No. of Casualties in Acc.'],
-                    'colorscale': 'pinkyl',
+                    'colorscale': 'algae',
                     'colorbar' :{'title':"Count"},
                 },
 
@@ -613,7 +622,8 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selec
                         'yaxis':{'title': 'Days'},
                         #'margin':{'l': 40, 'b': 40, 't': 80, 'r': 10},
                         'legend':{'orientation': 'h','x': 0, 'y': 1,'yanchor': 'bottom'},
-                        'transition': {'duration': 500}
+                        'transition': {'duration': 500},
+                        'dragmode' : 'select',
                    }
                 }
     return figure
@@ -626,17 +636,18 @@ def make_scatter(year, severity, weekdays, time, curve_graph_selected, map_selec
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
      Input('individual_graph','selectedData'),
-     Input('map','selectedData')
+     Input('map','selectedData'),
+     Input('well_statuses', 'value'),
      ]
 )
-def updateBarChart(severity, weekdays, time, year, curve_graph_selected, map_selected):
+def updateBarChart(severity, weekdays, time, year, curve_graph_selected, map_selected,months):
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
     hours = [i for i in range(time[0], time[1] + 1)]
 
-    if curve_graph_selected is None:
-        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
-    else:
-        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
+    # if curve_graph_selected is None:
+    #     months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    # else:
+    #     months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
 
 
     # Create a copy of the dataframe by filtering according to the values passed in.
@@ -705,7 +716,8 @@ def updateBarChart(severity, weekdays, time, year, curve_graph_selected, map_sel
                    'tickmode': 'array'
                },
                'transition': {
-                   'duration': 100}
+                   'duration': 100},
+               'dragmode': 'select',
            }}
 
     # Returns the figure into the 'figure' component property, update the bar chart
@@ -721,16 +733,17 @@ def updateBarChart(severity, weekdays, time, year, curve_graph_selected, map_sel
      Input(component_id='year_slider', component_property='value'),
      Input('individual_graph','selectedData'),
      Input('map','selectedData'),
+     Input('well_statuses','value'),
      ]
 )
-def updateHeatmap(severity, weekdays, time, year,curve_graph_selected, map_selected):
+def updateHeatmap(severity, weekdays, time, year,curve_graph_selected, map_selected, months):
     # The rangeslider is selects inclusively, but a python list stops before the last number in a range
     hours = [i for i in range(time[0], time[1] + 1)]
 
-    if curve_graph_selected is None:
-        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
-    else:
-        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
+    # if curve_graph_selected is None:
+    #     months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    # else:
+    #     months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
 
     #print("selected data",check)
 
@@ -765,8 +778,8 @@ def updateHeatmap(severity, weekdays, time, year,curve_graph_selected, map_selec
     # cas3 = cas_sl.append(cas_se, ignore_index=True)
     # cas4 = cas3.append(cas_fa, ignore_index=True)
     fig = px.sunburst(cas2, path=['Total','Accident Severity','Road Surface', 'Light Conditions (Banded)', 'age_by_decade'],\
-                      values='No. of Casualties in Acc.',color='No. of Casualties in Acc.',branchvalues="total",color_continuous_scale='pinkyl',)
-    fig.update_layout(title='Accident Severity -> Road Surface -> Light Conditions -> Casualty Age Group',margin=dict(t=30, l=0, r=0, b=0),transition = {'duration': 500})
+                      values='No. of Casualties in Acc.',color='No. of Casualties in Acc.',branchvalues="total",color_continuous_scale='algae',)
+    fig.update_layout(title='Accident Severity -> Road Surface -> Light Conditions -> Casualty Age Group',margin=dict(t=30, l=0, r=0, b=0),transition = {'duration': 500},dragmode = 'select')
 
     # # Apply text after grouping
     # def heatmapText(row):
@@ -833,13 +846,14 @@ def updateHeatmap(severity, weekdays, time, year,curve_graph_selected, map_selec
      Input(component_id='hourSlider', component_property='value'),
      Input(component_id='year_slider', component_property='value'),
      Input('individual_graph','selectedData'),
+     Input('well_statuses','value'),
      ]
 )
-def updateMapBox(severity, weekdays, time, year, curve_graph_selected):
-    if curve_graph_selected is None:
-        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
-    else:
-        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
+def updateMapBox(severity, weekdays, time, year, curve_graph_selected, months):
+    # if curve_graph_selected is None:
+    #     months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    # else:
+    #     months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
     # List of hours again
     hours = [i for i in range(time[0], time[1] + 1)]
     # Filter the dataframe
@@ -976,7 +990,7 @@ def make_year_graph(severity,weekdays,time,curve_graph_selected, map_selected):
                                  'type': 'bar',
                                  'text':text,
                                  'hoverinfo': 'text',
-                                 'marker': {'color': '#f16d7a','width': 0.1}
+                                 'marker': {'color': dd['counts'],'colorscale':'Greens','cmin' : 0,'cmax':max(dd['counts']),'reversescale':True,'width': 0.1}
                                  }                                
                             ],
                             'layout': {
@@ -984,7 +998,8 @@ def make_year_graph(severity,weekdays,time,curve_graph_selected, map_selected):
                                 'clickmode': 'event+select',
                                 'xaxis':{'title': 'Year','dtick' :1},
                                 'bargap':0.5,
-                                'height':400
+                                'height':400,
+                                'dragmode':'select',
                             }
                         }
     return figure
@@ -993,12 +1008,11 @@ def make_year_graph(severity,weekdays,time,curve_graph_selected, map_selected):
 @app.callback(Output("temp_graph", "figure"),
               [Input('severityChecklist_weather', 'value'),
                Input('weather-histogram', 'selectedData'),
-               Input('weather-histogram', 'clickData'),
                Input('snow_graph','selectedData'),
                Input('precipitation_graph', 'selectedData'),
                ])
-def make_temp_graph(severity, weather_selected, weather_clicked, snow_selected, precipitation_selected):
-    print('clickData',weather_clicked)
+def make_temp_graph(severity, weather_selected, snow_selected, precipitation_selected):
+
     if snow_selected:
         snow = [str(t["x"]) for t in snow_selected["points"]]
     else:
@@ -1011,8 +1025,6 @@ def make_temp_graph(severity, weather_selected, weather_clicked, snow_selected, 
 
     if weather_selected:
         weather = [str(t["y"]) for t in weather_selected["points"]]
-    elif weather_clicked:
-        weather = [str(t["y"]) for t in weather_clicked["points"]]
     else:
         weather = [temp for temp in acc['Weather'].unique()]
     acc2 = DataFrame(acc[[
@@ -1042,7 +1054,8 @@ def make_temp_graph(severity, weather_selected, weather_clicked, snow_selected, 
                                 'title': 'Filter by Temperature',
                                 'clickmode': 'event+select',
                                 'xaxis':{'title': 'Temperature(C)','dtick' :5,'range':[-5,40]},
-                                'height':300
+                                'height':300,
+                                'dragmode': 'select',
                             }
                         }
     return figure
@@ -1052,11 +1065,10 @@ def make_temp_graph(severity, weather_selected, weather_clicked, snow_selected, 
               [Input('severityChecklist_weather', 'value'),
                Input('temp_graph','selectedData'),
                Input('weather-histogram', 'selectedData'),
-               Input('weather-histogram', 'clickData'),
                Input('snow_graph','selectedData')
                ])
-def make_precipitation_graph(severity,selected_temp, weather_selected, weather_clicked, snow_selected):
-    #print("weather_selected",weather_selected)
+def make_precipitation_graph(severity,selected_temp, weather_selected, snow_selected):
+
     if snow_selected:
         snow = [str(t["x"]) for t in snow_selected["points"]]
     else:
@@ -1069,8 +1081,6 @@ def make_precipitation_graph(severity,selected_temp, weather_selected, weather_c
 
     if weather_selected:
         weather = [str(t["y"]) for t in weather_selected["points"]]
-    elif weather_clicked:
-        weather = [str(t["y"]) for t in weather_clicked["points"]]
     else:
         weather = [temp for temp in acc['Weather'].unique()]
     acc2 = DataFrame(acc[[
@@ -1111,8 +1121,8 @@ def make_precipitation_graph(severity,selected_temp, weather_selected, weather_c
                                 'title': 'Filter by Precipitation',
                                 'clickmode': 'event+select',
                                 'xaxis':{'title': 'Precipitation(mm)','dtick':4},	
-                                'height':300
-                                #'yaxis':{'range':[0,2000]}
+                                'height':300,
+                                'dragmode': 'select',
                             }
                         }
     return figure
@@ -1157,7 +1167,7 @@ def make_weather_histogram(severity,selected_temp,selected_precs,selected_snowf)
     figure={	
                             'data': [	
                                 {'y': dd['Weather'], 	
-                                 'x': dd['counts'], 	
+                                 'x': dd['counts'].clip(0,3000),
                                  'text': text,
                                  'hoverinfo':'text',
                                  'type': 'bar',	
@@ -1169,7 +1179,8 @@ def make_weather_histogram(severity,selected_temp,selected_precs,selected_snowf)
                                 'title': 'No. of Accidents with respect to Weather Conditions',	
                                 'clickmode': 'event+select',	
                                 'xaxis':{'title': 'Crash Count'},	
-                                'yaxis':{'title':'Weather Condition'}
+                                'yaxis':{'title':'Weather Condition'},
+                                'dragmode': 'select',
                             }	
                         }
 
@@ -1181,8 +1192,8 @@ def make_weather_histogram(severity,selected_temp,selected_precs,selected_snowf)
                Input('temp_graph','selectedData'),
                Input('precipitation_graph','selectedData'),
                Input('weather-histogram','selectedData'),
-               Input('weather-histogram','clickData')])
-def make_snow_graph(severity, selected_temp, selected_precs, weather_selected, weather_clicked):
+                ])
+def make_snow_graph(severity, selected_temp, selected_precs, weather_selected):
     #print("clicked_bar",clicked_bar)
     if selected_temp is None:
         tmps = [temp for temp in acc['Temp'].unique()]
@@ -1196,8 +1207,6 @@ def make_snow_graph(severity, selected_temp, selected_precs, weather_selected, w
 
     if weather_selected:
         weather = [str(t["y"]) for t in weather_selected["points"]]
-    elif weather_clicked:
-        weather = [str(t["y"]) for t in weather_clicked["points"]]
     else:
         weather = [temp for temp in acc['Weather'].unique()]
         
@@ -1233,7 +1242,8 @@ def make_snow_graph(severity, selected_temp, selected_precs, weather_selected, w
                                 'title': 'Filter by Amount of Snowfall',
                                 'clickmode': 'event+select',
                                 'xaxis':{'title': 'Snowfall(cm)','dtick' :1},
-                                'height':300                              #'yaxis':{'range':[0,310]}
+                                'height':300,
+                                'dragmode': 'select',
                             }
                         }
     return figure
@@ -1298,6 +1308,7 @@ def make_road_graph(severity,road2_sel,road2_click,road3_sel,road3_click):
                                 'transition': {'duration': 500},
                                 'height':830,
                                 'xaxis':{'title': 'Condition of Road Surface'},
+                                'dragmode': 'select',
                             }
                         }
     return figure
@@ -1351,7 +1362,8 @@ def make_road_graph2(severity,road_sel,road_click,road3_sel,road3_click):
                                 'title': 'Filter by Special Conditions',
                                 'clickmode': 'event+select',
                                 'height':350,
-                                'margin':dict(l=25,r=15,b=55,t=35)
+                                'margin':dict(l=25,r=15,b=55,t=35),
+                                'dragmode': 'select',
                             }
                         }
     return figure
@@ -1414,7 +1426,8 @@ def make_road_graph3(severity,road_sel,road_click,road2_sel,road2_click):
                                 'title': 'Filter by Hazards on Road',
                                 'clickmode': 'event+select',
                                 'height':350,
-                                'margin':dict(l=25,r=15,b=55,t=35)
+                                'margin':dict(l=25,r=15,b=55,t=35),
+                                'dragmode': 'select',
                             }
                         }
     return figure
@@ -1423,20 +1436,17 @@ def make_road_graph3(severity,road_sel,road_click,road2_sel,road2_click):
 #make vehicle_graph2
 @app.callback(Output("vehicle_graph2", "figure"),
               [Input('severityChecklist_vehicle', 'value'),
-               #Input('vehicle_graph1','selectedData'),
-               Input('vehicle_graph1','clickData'),
+               Input('vehicle_graph1','selectedData'),
                Input('vehicle_graph3','selectedData'),
-               Input('vehicle_graph3','clickData')])
-def make_veh_graph2(severity,veh1_clicked,veh3_selected,veh3_clicked):
-    if veh1_clicked:
-        typ = [veh1_clicked['points'][0]['x']]
+               ])
+def make_veh_graph2(severity,veh1_selected,veh3_selected):
+    if veh1_selected:
+        typ = [str(t["x"]) for t in veh1_selected["points"]]
     else:
         typ = [s for s in veh['Vehicle Type (Banded)'].unique()]
     
     if veh3_selected:
         mans = [str(t["x"]) for t in veh3_selected["points"]]
-    elif veh3_clicked:
-        mans = [veh3_clicked['points'][0]['x']]
     else:
         mans = [temp for temp in veh['Vehicle Manoeuvres'].unique()]
         
@@ -1447,8 +1457,9 @@ def make_veh_graph2(severity,veh1_clicked,veh3_selected,veh3_clicked):
                          (veh['Vehicle Manoeuvres'].isin(mans))
                          ]).reset_index()
     dd = veh2.groupby(['Vehicle Type']).size().reset_index(name='counts')
-    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(1000,10000))
-    dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
+    dd['counts'] = dd['counts'].clip(0,10000)
+    # dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(1000,10000))
+    # dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
     text = ['Vehicle Type: {}<br>{} crashes'.format(i,j) for i,j in zip(dd['Vehicle Type'],dd['counts'])]
     
     figure={
@@ -1466,7 +1477,9 @@ def make_veh_graph2(severity,veh1_clicked,veh3_selected,veh3_clicked):
                                 'title': 'Filter by Type and Power of vehicle',
                                 'clickmode': 'event+select',
                                 'height':350,
-                                'margin':dict(l=25,r=15,b=55,t=35),                            }
+                                'margin':dict(l=25,r=15,b=55,t=35),
+                                'dragmode': 'select',
+                            }
                         }
     return figure
 
@@ -1516,7 +1529,8 @@ def make_veh_graph3(severity, graph1_selected, graph2_selected):
                                 'title': 'Filter by Vehicle Manoeuvres',
                                 'clickmode': 'event+select',
                                 'height':350,
-                                'margin':dict(l=25,r=15,b=55,t=35)
+                                'margin':dict(l=25,r=15,b=55,t=35),
+                                'dragmode': 'select',
                             }
                         }
     return figure
@@ -1524,23 +1538,34 @@ def make_veh_graph3(severity, graph1_selected, graph2_selected):
 #make vehicle_graph1
 @app.callback(Output("vehicle_graph1", "figure"),
               [Input('severityChecklist_vehicle', 'value'),
-               Input('vehicle_graph2','clickData'),
+               Input('vehicle_graph2','selectedData'),
                Input('vehicle_graph3','selectedData')
                ])
-def make_vehicle_graph1(severity,clickData,selected_mans):
-    if clickData is None:
-        typ = veh['Vehicle Type'].unique()
+def make_vehicle_graph1(severity, graph_2_selected, graph_3_selected):
+
+    if graph_2_selected is None:
+        typ = [temp for temp in veh['Vehicle Type'].unique()]
     else:
-        typ = clickData['points'][0]['x']
-    if selected_mans is None:
+        typ = [str(t["x"]) for t in graph_2_selected["points"]]
+
+
+
+    if graph_3_selected is None:
         mans = [temp for temp in veh['Vehicle Manoeuvres'].unique()]
     else:
-        mans = [str(t["x"]) for t in selected_mans["points"]]    
+        mans = [str(t["x"]) for t in graph_3_selected["points"]]
+
     veh2 = DataFrame(veh[[
-        'Accident Severity', 'Vehicle Type','Vehicle Manoeuvres','Vehicle Type (Banded)']]).reset_index()
+        'Accident Severity', 'Vehicle Type', 'Vehicle Manoeuvres', 'Vehicle Type (Banded)']][
+                         (veh['Accident Severity'].isin(severity)) &
+                         (veh['Vehicle Manoeuvres'].isin(mans)) &
+                         (veh['Vehicle Type'].isin(typ))
+                         ]).reset_index()
+    # veh2 = DataFrame(veh[[
+    #     'Accident Severity', 'Vehicle Type','Vehicle Manoeuvres','Vehicle Type (Banded)']]).reset_index()
     dd = veh2.groupby(['Vehicle Type (Banded)']).size().reset_index(name='counts')
-    dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(20000,30000))
-    dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))  
+    # dd['counts'] = dd['counts'].apply(lambda x: x if x <= 20000 else randint(20000,30000))
+    # dd['counts'] = dd['counts'].apply(lambda x: x if x >= 1000 else randint(1000,10000))
     text = ['Vehicle Type: {}<br>{} crashes'.format(i,j) for i,j in zip(dd['Vehicle Type (Banded)'],dd['counts'])]
     figure={	
                             'data': [	
@@ -1555,7 +1580,8 @@ def make_vehicle_graph1(severity,clickData,selected_mans):
                             'layout': {	
                                 'title': 'Type of Vehicle',	
                                 'clickmode': 'event+select',	
-                                'height':830
+                                'height':830,
+                                'dragmode': 'select',
                             }	
                         }
 
@@ -1570,8 +1596,9 @@ def make_vehicle_graph1(severity,clickData,selected_mans):
                Input('dayChecklist', 'value'),
                Input('hourSlider', 'value'),
                Input('map','selectedData'),
+               Input('well_statuses','value'),
                ])
-def make_individual_figure(year, severity, weekdays, time, map_selected):
+def make_individual_figure(year, severity, weekdays, time, map_selected, months):
 
     hours = [i for i in range(time[0], time[1] + 1)]
     # Create a copy of the dataframe by filtering according to the values passed in.
@@ -1582,17 +1609,19 @@ def make_individual_figure(year, severity, weekdays, time, map_selected):
                              (acc['Accident Severity'].isin(severity)) &
                              (acc['Day'].isin(weekdays)) &
                              (acc['Hour'].isin(hours)) &
-                             (acc['Accident Year'].isin([year]))
+                             (acc['Accident Year'].isin([year])) &
+                             (acc['Accident Month'].isin(months))
                              ]).reset_index()
     else:
-        location = [str(mnts["text"]) for mnts in map_selected["points"]]
+        location = [str(loct["text"]) for loct in map_selected["points"]]
         acc2 = DataFrame(acc[[
             'Accident Severity', 'Location', 'No. of Casualties in Acc.', 'Accident Month']][
                              (acc['Accident Severity'].isin(severity)) &
                              (acc['Day'].isin(weekdays)) &
                              (acc['Hour'].isin(hours)) &
                              (acc['Accident Year'].isin([year])) &
-                             (acc['Location'].isin(location))
+                             (acc['Location'].isin(location)) &
+                             (acc['Accident Month'].isin(months))
                              ]).reset_index()
 
     # chosen = [point["customdata"] for point in main_graph_hover["points"]]
@@ -1659,7 +1688,8 @@ def make_individual_figure(year, severity, weekdays, time, map_selected):
             'tickmode': 'array'
         },
         'transition': {
-            'duration': 1000}
+            'duration': 1000},
+        'dragmode': 'select',
     }
     figure = dict(data=data, layout=layout)
     return figure
@@ -1701,14 +1731,7 @@ def update_text(year,severity, weekdays, time, curve_graph_selected, map_selecte
                              (merged['Accident Year_x'].isin([year])) &
                              (merged['Accident Month_x'].isin(months))
                              ]).reset_index()
-        # cas = DataFrame(casualty[[
-        #     'Casualty Severity', 'age_by_decade','Casualty Class']][
-        #                      (casualty['Casualty Severity'].isin(severity)) &
-        #                      (casualty['Day'].isin(weekdays)) &
-        #                      (casualty['Hour'].isin(hours)) &
-        #                      (casualty['Accident Year'].isin([year])) &
-        #                      (casualty['Accident Month'].isin(months))
-        #                      ]).reset_index()
+
     else:
         location = [str(mnts["text"]) for mnts in map_selected["points"]]
         acc2 = DataFrame(merged[[
@@ -1747,14 +1770,10 @@ def update_text(year,severity, weekdays, time, curve_graph_selected, map_selecte
     ],
     [Input('year_slider_weather', 'value'),
      Input('severityChecklist_weather', 'value'),
-     Input('individual_graph','selectedData'),
+     Input('well_statuses_weather','value'),
      ]
 )
-def update_text_weather(year,severity, curve_graph_selected):
-    if curve_graph_selected is None:
-        months = ['January','February','March','April','May','June','July','August','September','October','November','December']
-    else:
-        months = [str(mnts["x"]) for mnts in curve_graph_selected["points"]]
+def update_text_weather(year,severity, months):
 
     # Create a copy of the dataframe by filtering according to the values passed in.
     # Important to create a copy rather than affect the global object.
